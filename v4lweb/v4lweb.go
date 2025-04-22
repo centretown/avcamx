@@ -1,14 +1,14 @@
 package main
 
 import (
-	avcam "avcamx"
+	"avcamx"
 	"log"
 	"os"
 	"os/signal"
 )
 
 func main() {
-	host := avcam.NewAvHost("", "")
+	host := avcamx.NewAvHost("", "")
 	host.Load()
 
 	httpErr := make(chan error, 1)

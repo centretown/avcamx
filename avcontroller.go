@@ -1,4 +1,4 @@
-package avcam
+package avcamx
 
 type AvControl struct {
 	Url        string

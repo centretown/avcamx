@@ -1,4 +1,4 @@
-package avcam
+package avcamx
 
 type VideoSource interface {
 	Open(*VideoConfig) error

@@ -1,4 +1,4 @@
-package avcam
+package avcamx
 
 type Hook interface {
 	Update(img any)

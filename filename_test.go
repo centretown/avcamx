@@ -1,4 +1,4 @@
-package avcam
+package avcamx
 
 import (
 	"testing"

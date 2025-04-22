@@ -1,4 +1,4 @@
-package avcam
+package avcamx
 
 type AudioSource interface {
 	Record(stop chan int)

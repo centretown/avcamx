@@ -1,4 +1,4 @@
-package avcam
+package avcamx
 
 import (
 	"github.com/mattn/go-mjpeg"
