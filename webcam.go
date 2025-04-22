@@ -70,7 +70,12 @@ func (cam *Webcam) Open(videoConfig *VideoConfig) (err error) {
 	log.Printf("DeviceName:'%s' DriverName: '%s'\n",
 		deviceInfo.DeviceName, deviceInfo.DriverName)
 
-	cam.listControls()
+	err = cam.mapControls()
+	if err != nil {
+		cam.Close()
+		return
+	}
+
 	cam.device.TurnOff()
 
 	preferred := &v4l.DeviceConfig{
@@ -79,7 +84,15 @@ func (cam *Webcam) Open(videoConfig *VideoConfig) (err error) {
 		FPS: v4l.Frac{N: videoConfig.FPS, D: 1},
 	}
 
-	configErr := cam.device.SetConfig(*cam.findConfig(preferred))
+	found := cam.findConfig(preferred)
+	videoConfig.Path = cam.path
+	videoConfig.Driver = deviceInfo.DriverName
+	videoConfig.Codec = FourCC(found.Format)
+	videoConfig.Width = found.Width
+	videoConfig.Height = found.Height
+	videoConfig.FPS = found.FPS.N
+
+	configErr := cam.device.SetConfig(*found)
 	cam.readOnly = configErr != nil
 
 	var bufferInfo v4l.BufferInfo
@@ -100,20 +113,18 @@ func (cam *Webcam) Open(videoConfig *VideoConfig) (err error) {
 	return
 }
 
-func (cam *Webcam) listControls() {
-	controls, err := cam.device.ListControls()
+func (cam *Webcam) mapControls() (err error) {
+	var controls []v4l.ControlInfo
+	controls, err = cam.device.ListControls()
 	if err != nil {
 		log.Println("ListControls", cam.path, err)
 		return
 	}
 
-	log.Println("Controls:")
 	for _, c := range controls {
-		cam.Controls[strings.ToLower(c.Name)] = c
-		val, _ := cam.device.GetControl(c.CID)
-		log.Printf("CID='%v', Name='%s', Type=%v, Default=%v, Max=%v, Min=%v, Step=%v Value=%v\n",
-			c.CID, c.Name, c.Type, c.Default, c.Max, c.Min, c.Step, val)
+		cam.Controls[c.Name] = c
 	}
+	return
 }
 
 func (cam *Webcam) GetControlInfo(key string) (info v4l.ControlInfo, err error) {
