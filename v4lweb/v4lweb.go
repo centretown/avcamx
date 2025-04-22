@@ -2,7 +2,6 @@ package main
 
 import (
 	avcam "avcamx"
-	"encoding/json"
 	"log"
 	"os"
 	"os/signal"
@@ -11,12 +10,6 @@ import (
 func main() {
 	host := avcam.NewAvHost("", "")
 	host.Load()
-
-	buf, err := json.MarshalIndent(host, "", "  ")
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("%s\n", string(buf))
 
 	httpErr := make(chan error, 1)
 	go func() {

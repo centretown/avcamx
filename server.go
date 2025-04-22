@@ -124,6 +124,12 @@ func (vs *Server) Open() (err error) {
 	return
 }
 
+func (vs *Server) Quit() {
+	if vs.Busy {
+		vs.quit <- 1
+	}
+}
+
 func (vs *Server) Close() {
 	if vs.Recording {
 		vs.stopRecording()
