@@ -2,6 +2,8 @@ package avcamx
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 )
@@ -119,4 +121,27 @@ func (host *AvHost) Quit() {
 		log.Printf("Stopping '%s'\n", avItem.source.Path())
 		avItem.server.Quit()
 	}
+}
+
+func ReadRemote(r io.Reader) (host *AvHost, err error) {
+	host = &AvHost{}
+	var buf []byte
+	buf, err = io.ReadAll(r)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+	err = json.Unmarshal(buf, host)
+	return
+}
+
+func (host *AvHost) MakeProxy(remote *AvHost, id int) (err error) {
+	for i, remoteItem := range remote.Items {
+		ipcam := NewIpcam(remote.Url + remoteItem.Url)
+		var config VideoConfig = remoteItem.Config
+		config.Path = fmt.Sprintf("/video%d", id+i)
+		avItem := NewAvItem(id+i, &config, ipcam)
+		host.Items = append(host.Items, avItem)
+	}
+	return
 }
