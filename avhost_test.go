@@ -7,7 +7,7 @@ import (
 
 func TestAvHost(t *testing.T) {
 	host := NewAvHost("", "")
-	host.Load()
+	host.MakeLocal()
 
 	buf, err := json.MarshalIndent(host, "", "  ")
 	if err != nil {

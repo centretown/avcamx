@@ -2,9 +2,12 @@ package avcamx
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/korandiz/v4l"
 )
 
 type AvHost struct {
@@ -35,7 +38,7 @@ func NewAvHost(address string, port string) (host *AvHost) {
 	return
 }
 
-func (host *AvHost) Load() {
+func (host *AvHost) MakeLocal() {
 	var (
 		err error
 		mux = host.server.Handler.(*http.ServeMux)
@@ -86,23 +89,10 @@ func (host *AvHost) Load() {
 			if !keyFound {
 				continue
 			}
-
 			for _, avCtrl := range avCtrls {
-				mux.HandleFunc(avItem.Url+avCtrl.Url, func(http.ResponseWriter, *http.Request) {
-					value, err := webcam.device.GetControl(v4lCtrl.CID)
-					if err != nil {
-						log.Print(err)
-						return
-					}
-
-					newValue := value + v4lCtrl.Step*avCtrl.Multiplier
-					if newValue >= v4lCtrl.Min && newValue <= v4lCtrl.Max {
-						value = newValue
-						webcam.device.SetControl(v4lCtrl.CID, value)
-					}
-				})
+				mux.HandleFunc(avItem.Url+avCtrl.Url,
+					host.LocalHandler(webcam, v4lCtrl, avCtrl))
 			}
-
 		}
 
 		host.Items = append(host.Items, avItem)
@@ -192,5 +182,22 @@ func (host *AvHost) RemoteHandler(remoteItemUrl string, command string) func(htt
 		}
 		log.Printf("Received '%s' from remote: %s command: %s\n",
 			string(buf), remoteItemUrl, command)
+	}
+}
+
+func (host *AvHost) LocalHandler(webcam *Webcam, v4lCtrl v4l.ControlInfo, avCtrl AvControl) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		value, err := webcam.device.GetControl(v4lCtrl.CID)
+		if err != nil {
+			log.Print(err)
+			return
+		}
+
+		newValue := value + v4lCtrl.Step*avCtrl.Multiplier
+		if newValue >= v4lCtrl.Min && newValue <= v4lCtrl.Max {
+			value = newValue
+			webcam.device.SetControl(v4lCtrl.CID, value)
+		}
+		w.Write([]byte(fmt.Sprint(value)))
 	}
 }
