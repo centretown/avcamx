@@ -220,10 +220,13 @@ func (vs *Server) Serve() {
 		return
 	}
 
+	log.Printf("Serving... %s\n", vs.Source.Path())
 	vs.Busy = true
 	defer func() {
-		vs.Busy = false
-		vs.Close()
+		if vs.Busy {
+			vs.Busy = false
+			vs.Close()
+		}
 	}()
 
 	var (
@@ -263,9 +266,8 @@ func (vs *Server) Serve() {
 			}
 			err = vs.Open()
 			if err != nil {
-				log.Println("Unable to open",
-					vs.Source.Path(), "The camera is unavailable.")
-				vs.Source.Close()
+				log.Printf("Shutting down %s. Reason: %v", vs.Source.Path(), err)
+				vs.Busy = false
 				return
 			}
 			continue

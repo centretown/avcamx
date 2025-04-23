@@ -4,22 +4,43 @@ import (
 	"avcamx"
 	"encoding/json"
 	"log"
-	"net/http"
+	"os"
+	"os/signal"
 )
 
-var remote = "http://192.168.10.7:8080"
-
 func main() {
-	resp, err := http.Get(remote)
+	var remote = "http://192.168.10.7:8080"
+	host, err := avcamx.FetchRemote(remote)
 	if err != nil {
 		log.Fatal(err)
 	}
-	remote, err := avcamx.ReadRemote(resp.Body)
-	buf, err := json.MarshalIndent(remote, "", "  ")
+
+	buf, err := json.MarshalIndent(host, "", "  ")
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	started := true
+
 	log.Print(string(buf))
 
-	host := avcamx.NewAvHost("", "9000")
-	host.MakeProxy(remote, 2)
-	buf, err = json.MarshalIndent(host, "", "  ")
-	log.Print(string(buf))
+	if started {
+
+		httpErr := make(chan error, 1)
+		go func() {
+			httpErr <- host.ListenAndServe()
+		}()
+
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, os.Interrupt)
+		select {
+		case err := <-httpErr:
+			log.Printf("failed to serve http: %v", err)
+		case sig := <-sigs:
+			log.Printf("terminating: %v", sig)
+		}
+
+		host.Quit()
+	}
 }
