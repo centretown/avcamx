@@ -2,6 +2,7 @@ package avcamx
 
 import (
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 )
@@ -25,19 +26,20 @@ func NewAvHost(address string, port string) (host *AvHost) {
 	}
 
 	host.Url = address + ":" + port
+
+	host.server = &http.Server{
+		Addr:    host.Url,
+		Handler: &http.ServeMux{},
+	}
+
 	return
 }
 
 func (host *AvHost) Load() {
 	var (
 		err error
-		mux = &http.ServeMux{}
+		mux = host.server.Handler.(*http.ServeMux)
 	)
-
-	host.server = &http.Server{
-		Addr:    host.Url,
-		Handler: mux,
-	}
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		buf, err := json.Marshal(host)
@@ -121,18 +123,35 @@ func (host *AvHost) Quit() {
 	}
 }
 
-func (host *AvHost) MakeProxy(remote *AvHost, id int) (err error) {
+func (host *AvHost) FetchRemote(remoteAddr string) (err error) {
 	var (
-		mux = &http.ServeMux{}
+		resp   *http.Response
+		remote *AvHost
 	)
 
-	host.server = &http.Server{
-		Addr:    host.Url,
-		Handler: mux,
+	resp, err = http.Get(remoteAddr)
+	if err != nil {
+		log.Print(err)
+		return
 	}
 
+	remote, err = ReadRemote(resp.Body)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+	host.MakeProxy(remote, 2)
+	return
+}
+
+func (host *AvHost) MakeProxy(remote *AvHost, id int) (err error) {
+	var (
+		mux = host.server.Handler.(*http.ServeMux)
+	)
+
 	for i, remoteItem := range remote.Items {
-		ipcam := NewIpcam("http://" + remote.Url + remoteItem.Url)
+		remoteItemUrl := "http://" + remote.Url + remoteItem.Url
+		ipcam := NewIpcam(remoteItemUrl)
 		var config VideoConfig = remoteItem.Config
 		config.Path = remoteItem.Url
 		avItem := NewAvItem(id+i, &config, ipcam)
@@ -142,9 +161,36 @@ func (host *AvHost) MakeProxy(remote *AvHost, id int) (err error) {
 			continue
 		}
 		avItem.server = NewVideoServer(id, ipcam, &avItem.Config, nil, nil)
-		host.Items = append(host.Items, avItem)
-
 		mux.Handle(avItem.Url, avItem.server.Stream())
+		mux.HandleFunc(avItem.Url+"/reset",
+			host.RemoteHandler(remoteItemUrl, "/reset"))
+		host.Items = append(host.Items, avItem)
+		controller := AvControllers[config.Driver]
+		for _, controls := range controller {
+			for _, control := range controls {
+				mux.HandleFunc(avItem.Url+control.Url,
+					host.RemoteHandler(remoteItemUrl, control.Url))
+			}
+		}
 	}
 	return
+}
+
+func (host *AvHost) RemoteHandler(remoteItemUrl string, command string) func(http.ResponseWriter, *http.Request) {
+	return func(http.ResponseWriter, *http.Request) {
+		resp, err := http.Get(remoteItemUrl + command)
+		if err != nil {
+			log.Print(err)
+			return
+		}
+		defer resp.Body.Close()
+		var buf []byte
+		buf, err = io.ReadAll(resp.Body)
+		if err != nil {
+			log.Print(err)
+			return
+		}
+		log.Printf("Received '%s' from remote: %s command: %s\n",
+			string(buf), remoteItemUrl, command)
+	}
 }

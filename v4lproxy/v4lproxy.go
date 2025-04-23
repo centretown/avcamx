@@ -9,8 +9,10 @@ import (
 )
 
 func main() {
-	var remote = "http://192.168.10.7:8080"
-	host, err := avcamx.FetchRemote(remote)
+	var remote = "http://192.168.10.197:8080"
+	host := avcamx.NewAvHost("", "9000")
+
+	err := host.FetchRemote(remote)
 	if err != nil {
 		log.Fatal(err)
 	}
