@@ -123,10 +123,9 @@ func (host *AvHost) Quit() {
 	}
 }
 
-func (host *AvHost) FetchRemote(remoteAddr string) (err error) {
+func (host *AvHost) FetchRemote(remoteAddr string) (remote *AvHost, err error) {
 	var (
-		resp   *http.Response
-		remote *AvHost
+		resp *http.Response
 	)
 
 	resp, err = http.Get(remoteAddr)
@@ -140,7 +139,6 @@ func (host *AvHost) FetchRemote(remoteAddr string) (err error) {
 		log.Print(err)
 		return
 	}
-	host.MakeProxy(remote, 2)
 	return
 }
 
@@ -164,7 +162,6 @@ func (host *AvHost) MakeProxy(remote *AvHost, id int) (err error) {
 		mux.Handle(avItem.Url, avItem.server.Stream())
 		mux.HandleFunc(avItem.Url+"/reset",
 			host.RemoteHandler(remoteItemUrl, "/reset"))
-		host.Items = append(host.Items, avItem)
 		controller := AvControllers[config.Driver]
 		for _, controls := range controller {
 			for _, control := range controls {
@@ -172,6 +169,9 @@ func (host *AvHost) MakeProxy(remote *AvHost, id int) (err error) {
 					host.RemoteHandler(remoteItemUrl, control.Url))
 			}
 		}
+		host.Items = append(host.Items, avItem)
+		log.Printf("added proxy at %s%s\n\tfor remote %s\n",
+			host.Url, avItem.Url, remoteItemUrl)
 	}
 	return
 }
