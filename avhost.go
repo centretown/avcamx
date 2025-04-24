@@ -2,7 +2,7 @@ package avcamx
 
 import (
 	"encoding/json"
-	"fmt"
+	"html/template"
 	"io"
 	"log"
 	"net/http"
@@ -14,6 +14,7 @@ type AvHost struct {
 	Url    string
 	Items  []*AvItem
 	server *http.Server
+	tmpl   *template.Template
 }
 
 func NewAvHost(address string, port string) (host *AvHost) {
@@ -34,6 +35,10 @@ func NewAvHost(address string, port string) (host *AvHost) {
 		Addr:    host.Url,
 		Handler: &http.ServeMux{},
 	}
+
+	host.tmpl, _ = template.New("response").Parse(`{{ define "layout.response" }}
+<div id="response-div" class="fade-it">{{.}}</div>
+{{ end }}`)
 
 	return
 }
@@ -203,6 +208,6 @@ func (host *AvHost) LocalHandler(webcam *Webcam, v4lCtrl v4l.ControlInfo, avCtrl
 			value = newValue
 			webcam.device.SetControl(v4lCtrl.CID, value)
 		}
-		w.Write([]byte(fmt.Sprint(value)))
+		host.tmpl.Execute(w, value)
 	}
 }
