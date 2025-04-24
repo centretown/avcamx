@@ -1,11 +1,12 @@
 package main
 
 import (
-	"avcamx"
 	"flag"
 	"log"
 	"os"
 	"os/signal"
+
+	"github.com/centretown/avcamx"
 )
 
 func main() {
