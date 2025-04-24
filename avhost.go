@@ -49,7 +49,7 @@ func (host *AvHost) MakeLocal() {
 		mux = host.server.Handler.(*http.ServeMux)
 	)
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/host", func(w http.ResponseWriter, r *http.Request) {
 		buf, err := json.Marshal(host)
 		if err != nil {
 			buf = ([]byte)(err.Error())
@@ -120,7 +120,7 @@ func (host *AvHost) FetchRemote(remoteAddr string) (remote *AvHost, err error) {
 		resp *http.Response
 	)
 
-	resp, err = http.Get(remoteAddr)
+	resp, err = http.Get(remoteAddr + "/host")
 	if err != nil {
 		log.Print(err)
 		return
