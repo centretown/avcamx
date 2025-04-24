@@ -3,7 +3,7 @@ module github.com/centretown/avcamx
 go 1.24.0
 
 require (
-	github.com/google/uuid v1.1.1
+	github.com/google/uuid v1.6.0
 	github.com/korandiz/v4l v1.1.0
 	github.com/mattn/go-mjpeg v0.0.3
 	github.com/u2takey/ffmpeg-go v0.5.0
