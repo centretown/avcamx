@@ -55,7 +55,8 @@ func (host *AvHost) MakeLocal() {
 	webcams := FindWebcams()
 	for id, webcam := range webcams {
 
-		// requested configuration
+		// requested configuration, actual configuration determined
+		// when opened depending on what's available for that camera
 		config := &VideoConfig{
 			Codec:  "MJPG",
 			Width:  1920,
@@ -76,22 +77,18 @@ func (host *AvHost) MakeLocal() {
 		controller := AvControllers[config.Driver]
 		mux.HandleFunc(avItem.Url+"/reset", func(http.ResponseWriter, *http.Request) {
 			for key, v4lCtrl := range webcam.Controls {
-				_, keyFound := controller[key]
-				if !keyFound {
-					continue
+				if _, keyFound := controller[key]; keyFound {
+					webcam.device.SetControl(v4lCtrl.CID, v4lCtrl.Default)
 				}
-				webcam.device.SetControl(v4lCtrl.CID, v4lCtrl.Default)
 			}
 		})
 
 		for key, v4lCtrl := range webcam.Controls {
-			avCtrls, keyFound := controller[key]
-			if !keyFound {
-				continue
-			}
-			for _, avCtrl := range avCtrls {
-				mux.HandleFunc(avItem.Url+avCtrl.Url,
-					host.LocalHandler(webcam, v4lCtrl, avCtrl))
+			if avCtrls, keyFound := controller[key]; keyFound {
+				for _, avCtrl := range avCtrls {
+					mux.HandleFunc(avItem.Url+avCtrl.Url,
+						host.LocalHandler(webcam, v4lCtrl, avCtrl))
+				}
 			}
 		}
 
@@ -132,26 +129,33 @@ func (host *AvHost) FetchRemote(remoteAddr string) (remote *AvHost, err error) {
 	return
 }
 
-func (host *AvHost) MakeProxy(remote *AvHost, id int) (err error) {
+func (host *AvHost) MakeProxy(remote *AvHost) {
 	var (
+		err error
+		id  = len(host.Items)
 		mux = host.server.Handler.(*http.ServeMux)
 	)
 
-	for i, remoteItem := range remote.Items {
-		remoteItemUrl := "http://" + remote.Url + remoteItem.Url
-		ipcam := NewIpcam(remoteItemUrl)
-		var config VideoConfig = remoteItem.Config
+	for index, remoteItem := range remote.Items {
+		var (
+			remoteItemUrl = "http://" + remote.Url + remoteItem.Url
+			config        = remoteItem.Config
+			ipcam         = NewIpcam(remoteItemUrl)
+			avItem        = NewAvItem(id+index, &config, ipcam)
+		)
+
 		config.Path = remoteItem.Url
-		avItem := NewAvItem(id+i, &config, ipcam)
 		err = ipcam.Open(&avItem.Config)
 		if err != nil {
 			log.Print(err)
 			continue
 		}
+
 		avItem.server = NewVideoServer(id, ipcam, &avItem.Config, nil, nil)
 		mux.Handle(avItem.Url, avItem.server.Stream())
 		mux.HandleFunc(avItem.Url+"/reset",
 			host.RemoteHandler(remoteItemUrl, "/reset"))
+
 		controller := AvControllers[config.Driver]
 		for _, controls := range controller {
 			for _, control := range controls {
@@ -159,6 +163,7 @@ func (host *AvHost) MakeProxy(remote *AvHost, id int) (err error) {
 					host.RemoteHandler(remoteItemUrl, control.Url))
 			}
 		}
+
 		host.Items = append(host.Items, avItem)
 		log.Printf("added proxy at %s%s\n\tfor remote %s\n",
 			host.Url, avItem.Url, remoteItemUrl)

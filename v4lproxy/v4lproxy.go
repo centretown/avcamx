@@ -23,7 +23,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	host.MakeProxy(remote, 0)
+	host.MakeProxy(remote)
 
 	httpErr := make(chan error, 1)
 	go func() {
