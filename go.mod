@@ -1,4 +1,4 @@
-module avcamx
+module github.com/centretown/avcamx
 
 go 1.24.0
 
