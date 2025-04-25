@@ -15,11 +15,13 @@ type AvHost struct {
 	Items  []*AvItem
 	server *http.Server
 	tmpl   *template.Template
+	mux    *http.ServeMux
 }
 
 func NewAvHost(address string, port string) (host *AvHost) {
 	host = &AvHost{
 		Items: make([]*AvItem, 0),
+		mux:   &http.ServeMux{},
 	}
 	if len(port) == 0 {
 		port = "8080"
@@ -33,7 +35,7 @@ func NewAvHost(address string, port string) (host *AvHost) {
 
 	host.server = &http.Server{
 		Addr:    host.Url,
-		Handler: &http.ServeMux{},
+		Handler: host.mux,
 	}
 
 	host.tmpl, _ = template.New("response").Parse(`{{ define "layout.response" }}
@@ -58,7 +60,8 @@ func (host *AvHost) MakeLocal() {
 	})
 
 	webcams := FindWebcams()
-	for id, webcam := range webcams {
+	var id int = -1
+	for _, webcam := range webcams {
 
 		// requested configuration, actual configuration determined
 		// when opened depending on what's available for that camera
@@ -74,6 +77,8 @@ func (host *AvHost) MakeLocal() {
 			log.Print(err)
 			continue
 		}
+
+		id++
 
 		avItem := NewAvItem(id, config, webcam)
 		avItem.server = NewVideoServer(id, webcam, &avItem.Config, nil, nil)
@@ -122,13 +127,13 @@ func (host *AvHost) FetchRemote(remoteAddr string) (remote *AvHost, err error) {
 
 	resp, err = http.Get(remoteAddr + "/host")
 	if err != nil {
-		log.Print(err)
+		log.Print("FetchRemote Get", err)
 		return
 	}
 
 	remote, err = ReadRemote(resp.Body)
 	if err != nil {
-		log.Print(err)
+		log.Print("FetchRemote ReadRemote", err)
 		return
 	}
 	return
@@ -211,3 +216,5 @@ func (host *AvHost) LocalHandler(webcam *Webcam, v4lCtrl v4l.ControlInfo, avCtrl
 		host.tmpl.Execute(w, value)
 	}
 }
+
+func (host *AvHost) Mux() *http.ServeMux { return host.mux }
