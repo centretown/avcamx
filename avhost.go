@@ -38,9 +38,7 @@ func NewAvHost(address string, port string) (host *AvHost) {
 		Handler: host.mux,
 	}
 
-	host.tmpl, _ = template.New("response").Parse(`{{ define "layout.response" }}
-<div id="response-div" class="fade-it">{{.}}</div>
-{{ end }}`)
+	host.tmpl, _ = template.New("response").Parse(`<div id="response-div" class="fade-it">{{.}}</div>`)
 
 	return
 }
@@ -213,8 +211,8 @@ func (host *AvHost) LocalHandler(webcam *Webcam, v4lCtrl v4l.ControlInfo, avCtrl
 			value = newValue
 			webcam.device.SetControl(v4lCtrl.CID, value)
 		}
-		tmpl := host.tmpl.Lookup("response")
-		tmpl.Execute(w, value)
+		// tmpl := host.tmpl.Lookup("response")
+		host.tmpl.Execute(w, value)
 		// tmpl.Execute(os.Stderr, value)
 	}
 }
