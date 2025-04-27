@@ -19,3 +19,10 @@ func NewAvItem(id int, config *VideoConfig, source VideoSource) (item *AvItem) {
 	}
 	return
 }
+
+func (item *AvItem) IsOpened() bool {
+	if item.source == nil {
+		return false
+	}
+	return item.source.IsOpened()
+}
