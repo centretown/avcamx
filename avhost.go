@@ -213,7 +213,9 @@ func (host *AvHost) LocalHandler(webcam *Webcam, v4lCtrl v4l.ControlInfo, avCtrl
 			value = newValue
 			webcam.device.SetControl(v4lCtrl.CID, value)
 		}
-		host.tmpl.Execute(w, value)
+		tmpl := host.tmpl.Lookup("response")
+		tmpl.Execute(w, value)
+		// tmpl.Execute(os.Stderr, value)
 	}
 }
 
