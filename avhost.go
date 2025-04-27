@@ -180,7 +180,7 @@ func (host *AvHost) MakeProxy(remote *AvHost) {
 }
 
 func (host *AvHost) RemoteHandler(remoteItemUrl string, command string) func(http.ResponseWriter, *http.Request) {
-	return func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		resp, err := http.Get(remoteItemUrl + command)
 		if err != nil {
 			log.Print(err)
@@ -193,8 +193,7 @@ func (host *AvHost) RemoteHandler(remoteItemUrl string, command string) func(htt
 			log.Print(err)
 			return
 		}
-		log.Printf("Received '%s' from remote: %s command: %s\n",
-			string(buf), remoteItemUrl, command)
+		w.Write(buf)
 	}
 }
 
