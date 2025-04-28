@@ -43,7 +43,7 @@ func NewAvHost(address string, port string) (host *AvHost) {
 	return
 }
 
-func (host *AvHost) MakeLocal() {
+func (host *AvHost) MakeLocal(listener StreamListener) {
 	var (
 		err error
 		mux = host.server.Handler.(*http.ServeMux)
@@ -79,7 +79,7 @@ func (host *AvHost) MakeLocal() {
 		id++
 
 		avItem := NewAvItem(id, config, webcam)
-		avItem.server = NewVideoServer(id, webcam, &avItem.Config, nil, nil)
+		avItem.server = NewVideoServer(id, webcam, &avItem.Config, nil, listener)
 		mux.Handle(avItem.Url, avItem.server.Stream())
 
 		controller := AvControllers[config.Driver]
@@ -137,7 +137,7 @@ func (host *AvHost) FetchRemote(remoteAddr string) (remote *AvHost, err error) {
 	return
 }
 
-func (host *AvHost) MakeProxy(remote *AvHost) {
+func (host *AvHost) MakeProxy(remote *AvHost, listener StreamListener) {
 	var (
 		err error
 		id  = len(host.Items)
@@ -149,17 +149,17 @@ func (host *AvHost) MakeProxy(remote *AvHost) {
 			remoteItemUrl = "http://" + remote.Url + remoteItem.Url
 			config        = remoteItem.Config
 			ipcam         = NewIpcam(remoteItemUrl)
-			avItem        = NewAvItem(id+index, &config, ipcam)
 		)
 
-		config.Path = remoteItem.Url
+		config.Path = remoteItemUrl
+		avItem := NewAvItem(id+index, &config, ipcam)
 		err = ipcam.Open(&avItem.Config)
 		if err != nil {
 			log.Print(err)
 			continue
 		}
 
-		avItem.server = NewVideoServer(id, ipcam, &avItem.Config, nil, nil)
+		avItem.server = NewVideoServer(id, ipcam, &avItem.Config, nil, listener)
 		mux.Handle(avItem.Url, avItem.server.Stream())
 		mux.HandleFunc(avItem.Url+"/reset",
 			host.RemoteHandler(remoteItemUrl, "/reset"))

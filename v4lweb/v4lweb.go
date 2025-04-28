@@ -10,7 +10,7 @@ import (
 
 func main() {
 	host := avcamx.NewAvHost("", "")
-	host.MakeLocal()
+	host.MakeLocal(nil)
 
 	httpErr := make(chan error, 1)
 	go func() {

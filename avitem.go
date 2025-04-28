@@ -26,3 +26,28 @@ func (item *AvItem) IsOpened() bool {
 	}
 	return item.source.IsOpened()
 }
+
+func (item *AvItem) IsRecording() bool {
+	if item.server == nil {
+		return false
+	}
+	return item.server.Recording
+}
+
+func (item *AvItem) RecordCmd(seconds int) {
+	if item.server != nil {
+		item.server.RecordCmd(seconds)
+	}
+}
+
+func (item *AvItem) StopRecordCmd() {
+	if item.server != nil {
+		item.server.StopRecordCmd()
+	}
+}
+
+func (item *AvItem) SetRecordListener(streamListener StreamListener) {
+	if item.server != nil {
+		item.server.Listener = streamListener
+	}
+}

@@ -51,7 +51,7 @@ type Server struct {
 	audioSource AudioSource
 	Recording   bool
 	Busy        bool
-	listener    StreamListener
+	Listener    StreamListener
 
 	quit chan int
 	cmd  chan ServerCmd
@@ -77,7 +77,7 @@ func NewVideoServer(id int, source VideoSource, config *VideoConfig,
 		Source:        source,
 		Config:        config,
 		Id:            id,
-		listener:      listener,
+		Listener:      listener,
 		quit:          make(chan int),
 		cmd:           make(chan ServerCmd),
 		streamHook:    NewStreamHook(),
@@ -115,12 +115,12 @@ func (vs *Server) Stream() http.Handler {
 }
 
 func (vs *Server) Open() (err error) {
-	err = vs.Source.Open(vs.Config)
-	if err != nil {
-		log.Printf("Open Error '%s', %v\n", vs.Source.Path(), err)
-	} else {
-		log.Printf("Opened '%s'\n", vs.Source.Path())
-	}
+	// err = vs.Source.Open(vs.Config)
+	// if err != nil {
+	// 	log.Printf("Open Error '%s', %v\n", vs.Source.Path(), err)
+	// } else {
+	// 	log.Printf("Opened '%s'\n", vs.Source.Path())
+	// }
 	return
 }
 
@@ -164,7 +164,7 @@ func (vs *Server) startRecording(duration int) {
 		log.Println("avcam Nil")
 	}
 
-	vs.listener.StreamOn(vs.Id)
+	vs.Listener.StreamOn(vs.Id)
 	vs.Recording = true
 	vs.captureCount = 0
 	config := vs.Config
@@ -191,7 +191,7 @@ func (vs *Server) stopRecording() {
 
 	vs.captureStop <- 1
 	vs.Recording = false
-	vs.listener.StreamOff(vs.Id)
+	vs.Listener.StreamOff(vs.Id)
 	log.Println("recorder closed")
 }
 
