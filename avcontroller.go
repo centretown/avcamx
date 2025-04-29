@@ -36,12 +36,12 @@ var UCVVIDEO = map[string][]AvControl{
 		AvControl{
 			Url:        "/tiltup",
 			Icon:       "arrow_upward",
-			Multiplier: -1,
+			Multiplier: 1,
 		},
 		AvControl{
 			Url:        "/tiltdown",
 			Icon:       "arrow_downward",
-			Multiplier: 1,
+			Multiplier: -1,
 		},
 	},
 	"Brightness": {
