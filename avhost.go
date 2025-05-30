@@ -13,7 +13,7 @@ import (
 type AvHost struct {
 	Url    string
 	Items  []*AvItem
-	server *http.Server
+	Server *http.Server
 	tmpl   *template.Template
 	mux    *http.ServeMux
 }
@@ -33,7 +33,7 @@ func NewAvHost(address string, port string) (host *AvHost) {
 
 	host.Url = address + ":" + port
 
-	host.server = &http.Server{
+	host.Server = &http.Server{
 		Addr:    host.Url,
 		Handler: host.mux,
 	}
@@ -46,7 +46,7 @@ func NewAvHost(address string, port string) (host *AvHost) {
 func (host *AvHost) MakeLocal(listener StreamListener) {
 	var (
 		err error
-		mux = host.server.Handler.(*http.ServeMux)
+		mux = host.Server.Handler.(*http.ServeMux)
 	)
 
 	mux.HandleFunc("/host", func(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +108,7 @@ func (host *AvHost) ListenAndServe() error {
 	for _, avItem := range host.Items {
 		go avItem.server.Serve()
 	}
-	return host.server.ListenAndServe()
+	return host.Server.ListenAndServe()
 }
 
 func (host *AvHost) Quit() {
@@ -141,7 +141,7 @@ func (host *AvHost) MakeProxy(remote *AvHost, listener StreamListener) {
 	var (
 		err error
 		id  = len(host.Items)
-		mux = host.server.Handler.(*http.ServeMux)
+		mux = host.Server.Handler.(*http.ServeMux)
 	)
 
 	for index, remoteItem := range remote.Items {
