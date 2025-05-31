@@ -161,7 +161,7 @@ func (vs *Server) startRecording(duration int) {
 			log.Println("avcam Not Enabled")
 		}
 	} else {
-		log.Println("avcam Nil")
+		log.Println("audioSource Nil")
 	}
 
 	vs.Listener.StreamOn(vs.Id)

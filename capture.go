@@ -47,6 +47,9 @@ func Capture(stop <-chan int, img <-chan []byte,
 			OverWriteOutput().
 			WithInput(reader).
 			Run()
+		if err != nil {
+			log.Fatal(err)
+		}
 		log.Println("ffmpeg process2 done")
 		done <- err
 		close(done)

@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	OutputBase = "./output/"
+	OutputBase = "/mnt/molly/output/"
 )
 
 func NextFileName(parent, ext string) (string, error) {
