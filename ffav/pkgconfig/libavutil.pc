@@ -1,0 +1,14 @@
+prefix=/home/dave/ffmpeg_build
+exec_prefix=${prefix}
+libdir=/home/dave/ffmpeg_build/lib
+includedir=/home/dave/ffmpeg_build/include
+
+Name: libavutil
+Description: FFmpeg utility library
+Version: 60.3.100
+Requires: 
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavutil -lva-drm -lva -lva-x11 -lva -lvdpau -lX11 -lm -ldrm -lva -latomic -pthread -lX11 -lpthread -lxcb -lXau -lXdmcp
+Libs.private: 
+Cflags: -I${includedir}

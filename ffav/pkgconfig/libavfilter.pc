@@ -1,0 +1,14 @@
+prefix=/home/dave/ffmpeg_build
+exec_prefix=${prefix}
+libdir=/home/dave/ffmpeg_build/lib
+includedir=/home/dave/ffmpeg_build/include
+
+Name: libavfilter
+Description: FFmpeg audio/video filtering library
+Version: 11.0.100
+Requires: libswscale >= 9.0.100, libavformat >= 62.0.102, libavcodec >= 62.3.101, libswresample >= 6.0.100, libavutil >= 60.3.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavfilter -pthread -lm -latomic -lass -lm -lfontconfig -lfreetype -lbz2 -lz -lm -lz -lm -lz -lbrotlicommon -lexpat -lm -lunibreak -lharfbuzz -pthread -lm -lbz2 -lz -lm -lz -lm -lz -lbrotlicommon -lglib-2.0 -lm -pthread -lpcre2-8 -lgraphite2 -lfribidi -lfreetype -lbz2 -lz -lpng16 -lm -lz -lm -lz -lbrotlidec -lbrotlicommon -lva -lfreetype -lbz2 -lz -lpng16 -lm -lz -lm -lz -lbrotlidec -lbrotlicommon
+Libs.private: 
+Cflags: -I${includedir}
