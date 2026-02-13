@@ -1,8 +1,6 @@
 {
   "HostAddr": "192.168.10.7",
   "HostPort": "9000",
-  "Remotes": [
-    "http://192.168.10.197:8080"
-  ],
+  "Remotes": [],
   "OutputBase": "/mnt/molly/output"
 }

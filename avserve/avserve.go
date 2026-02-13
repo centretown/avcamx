@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"time"
 
 	"github.com/centretown/avcamx"
 )
@@ -28,9 +27,7 @@ func main() {
 
 	avFlags.Print()
 
-	host := avcamx.NewAvHost(avFlags.HostAddr, avFlags.HostPort, avFlags.Remotes)
-	done := make(chan int)
-	go host.Monitor(done)
+	host := avcamx.NewAvHost(avFlags.HostAddr, avFlags.HostPort, avFlags.Remotes, 1000)
 
 	log.Printf("\nServing %s...", host.Url)
 
@@ -38,7 +35,5 @@ func main() {
 	signal.Notify(sigs, os.Interrupt)
 	sig := <-sigs
 	log.Printf("Interrupted: %v", sig)
-	done <- 1
-	time.Sleep(3 * time.Second)
 	host.Quit()
 }

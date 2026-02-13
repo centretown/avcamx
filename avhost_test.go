@@ -8,24 +8,20 @@ import (
 
 func TestScan(t *testing.T) {
 
-	host := NewAvHost("", "", []string{})
-	done := make(chan int)
-	go host.Monitor(done)
+	host := NewAvHost("", "", []string{}, 1000)
 
 	for range 60 {
 		time.Sleep(time.Second * 2)
-		if len(host.Items) > 0 && host.Items[0].IsOpened() {
-			testCmd(t, host, host.Items[0])
+		if len(host.Streams) > 0 && host.Streams[0].IsOpened() {
+			testCmd(t, host, host.Streams[0])
 		}
 	}
 
-	done <- 1
-	time.Sleep(3 * time.Second)
-
-	for _, item := range host.Items {
+	for _, item := range host.Streams {
 		t.Logf("host.Item=%s %s %v", item.Url, item.Source.Path(), item.IsOpened())
 	}
 
+	host.Quit()
 }
 
 var (
