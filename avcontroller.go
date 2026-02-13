@@ -6,6 +6,21 @@ type AvControl struct {
 	Multiplier int32
 }
 
+type AvUrl struct {
+	Name    string
+	Control *AvControl
+}
+
+var AvUrlToName map[string]AvUrl = make(map[string]AvUrl)
+
+func init() {
+	for ctrlName, avCtrlList := range UCVVIDEO {
+		for _, ctrl := range avCtrlList {
+			AvUrlToName[ctrl.Url] = AvUrl{Name: ctrlName, Control: &ctrl}
+		}
+	}
+}
+
 // keys correspond to v4l Control Names
 var UCVVIDEO = map[string][]AvControl{
 	"Zoom, Absolute": {

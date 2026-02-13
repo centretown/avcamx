@@ -44,9 +44,9 @@ type StreamListener interface {
 	StreamOff(id int)
 }
 
-type Server struct {
+type AvServer struct {
 	Id          int
-	Config      *VideoConfig
+	Config      VideoConfig
 	Source      VideoSource
 	audioSource AudioSource
 	Recording   bool
@@ -70,12 +70,12 @@ type Server struct {
 	avcamRecording bool
 }
 
-func NewVideoServer(id int, source VideoSource, config *VideoConfig,
-	audioSource AudioSource, listener StreamListener) *Server {
+func NewAvServer(id int, source VideoSource, config *VideoConfig,
+	audioSource AudioSource, listener StreamListener) *AvServer {
 
-	cam := &Server{
+	cam := &AvServer{
 		Source:        source,
-		Config:        config,
+		Config:        *config,
 		Id:            id,
 		Listener:      listener,
 		quit:          make(chan int),
@@ -91,46 +91,36 @@ func NewVideoServer(id int, source VideoSource, config *VideoConfig,
 	return cam
 }
 
-func (vs *Server) Url() string {
+func (vs *AvServer) Url() string {
 	return fmt.Sprintf("/video%d", vs.Id)
 }
 
-func (vs *Server) AddFilter(filter Hook) {
+func (vs *AvServer) AddFilter(filter Hook) {
 	vs.filters = append(vs.filters, filter)
 }
-func (vs *Server) Command(cmd ServerCmd) {
+func (vs *AvServer) Command(cmd ServerCmd) {
 	vs.cmd <- cmd
 }
 
-func (vs *Server) RecordCmd(seconds int) {
+func (vs *AvServer) RecordCmd(seconds int) {
 	vs.Command(ServerCmd{Action: RECORD_START, Value: seconds})
 }
 
-func (vs *Server) StopRecordCmd() {
+func (vs *AvServer) StopRecordCmd() {
 	vs.Command(ServerCmd{Action: RECORD_STOP, Value: true})
 }
 
-func (vs *Server) Stream() http.Handler {
+func (vs *AvServer) Stream() http.Handler {
 	return vs.streamHook.Stream
 }
 
-func (vs *Server) Open() (err error) {
-	// err = vs.Source.Open(vs.Config)
-	// if err != nil {
-	// 	log.Printf("Open Error '%s', %v\n", vs.Source.Path(), err)
-	// } else {
-	// 	log.Printf("Opened '%s'\n", vs.Source.Path())
-	// }
-	return
-}
-
-func (vs *Server) Quit() {
+func (vs *AvServer) Quit() {
 	if vs.Busy {
 		vs.quit <- 1
 	}
 }
 
-func (vs *Server) Close() {
+func (vs *AvServer) Close() {
 	if vs.Recording {
 		vs.stopRecording()
 	}
@@ -139,12 +129,12 @@ func (vs *Server) Close() {
 }
 
 const (
-	DELAY_NORMAL    = time.Millisecond
-	DELAY_RETRY     = time.Second
-	DELAY_HIBERNATE = time.Second * 30
+	DELAY_NORMAL = time.Millisecond
+	// DELAY_RETRY     = time.Second
+	// DELAY_HIBERNATE = time.Second * 30
 )
 
-func (vs *Server) startRecording(duration int) {
+func (vs *AvServer) startRecording(duration int) {
 	log.Println("start recording")
 
 	if vs.Recording {
@@ -178,7 +168,7 @@ func (vs *Server) startRecording(duration int) {
 
 }
 
-func (vs *Server) stopRecording() {
+func (vs *AvServer) stopRecording() {
 	if !vs.Recording {
 		log.Println("stopRecording already stopped")
 		return
@@ -195,7 +185,7 @@ func (vs *Server) stopRecording() {
 	log.Println("recorder closed")
 }
 
-func (vs *Server) doCmd(cmd ServerCmd) {
+func (vs *AvServer) doCmd(cmd ServerCmd) {
 	switch cmd.Action {
 	// case GET:
 	// 	cmd.Value = cam.video.Get(cmd.Property)
@@ -209,7 +199,7 @@ func (vs *Server) doCmd(cmd ServerCmd) {
 	}
 }
 
-func (vs *Server) Serve() {
+func (vs *AvServer) Serve() {
 	if vs.Busy {
 		log.Fatal("server already busy")
 		return
@@ -220,7 +210,7 @@ func (vs *Server) Serve() {
 		return
 	}
 
-	log.Printf("Serving... %s\n", vs.Source.Path())
+	// log.Printf("Serving... %s\n", vs.Source.Path())
 	vs.Busy = true
 	defer func() {
 		if vs.Busy {
@@ -230,15 +220,16 @@ func (vs *Server) Serve() {
 	}()
 
 	var (
-		cmd   ServerCmd
-		retry int
-		delay = DELAY_NORMAL
-		buf   []byte
-		err   error
+		cmd ServerCmd
+		// retry int
+		// delay = DELAY_NORMAL
+		buf []byte
+		err error
 	)
 
 	for {
-		time.Sleep(delay)
+		time.Sleep(0)
+		// time.Sleep(delay)
 
 		select {
 		case <-vs.quit:
@@ -251,29 +242,31 @@ func (vs *Server) Serve() {
 
 		buf, err = vs.Source.Read()
 		if err != nil {
-			log.Println("READ", err)
-			if retry > 10 {
-				delay = DELAY_HIBERNATE
-			} else {
-				delay = DELAY_RETRY
-			}
+			log.Printf("%v read error %v\n", vs.Source.Path(), err)
+			// vs.Source.Close()
+			return
+			// 	if retry > 10 {
+			// 		delay = DELAY_HIBERNATE
+			// 	} else {
+			// 		delay = DELAY_RETRY
+			// 	}
 
-			retry++
-			log.Printf("%v is unavailable, attempts=%d next in %.0f seconds\n",
-				vs.Source.Path(), retry, delay.Seconds())
-			if vs.Source.IsOpened() {
-				vs.Source.Close()
-			}
-			err = vs.Open()
-			if err != nil {
-				log.Printf("Shutting down %s. Reason: %v", vs.Source.Path(), err)
-				vs.Busy = false
-				return
-			}
-			continue
+			// 	retry++
+			// 	log.Printf("%v is unavailable, attempts=%d next in %.0f seconds\n",
+			// 		vs.Source.Path(), retry, delay.Seconds())
+			// 	if vs.Source.IsOpened() {
+			// 		vs.Source.Close()
+			// 	}
+			// 	err = vs.Open()
+			// 	if err != nil {
+			// 		log.Printf("Shutting down %s. Reason: %v", vs.Source.Path(), err)
+			// 		vs.Busy = false
+			// 		return
+			// 	}
+			// 	continue
 		}
-		delay = DELAY_NORMAL
-		retry = 0
+		// delay = DELAY_NORMAL
+		// retry = 0
 		vs.streamHook.Update(buf)
 
 		if vs.Recording {

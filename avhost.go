@@ -6,22 +6,26 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/korandiz/v4l"
 )
 
 type AvHost struct {
-	Url    string
-	Items  []*AvItem
-	Server *http.Server
-	tmpl   *template.Template
-	mux    *http.ServeMux
+	Url     string
+	Items   []*AvStream
+	Remotes []string
+	Server  *http.Server       `json:"-"`
+	tmpl    *template.Template `json:"-"`
+	mux     *http.ServeMux     `json:"-"`
 }
 
-func NewAvHost(address string, port string) (host *AvHost) {
+func NewAvHost(address string, port string, remotes []string) (host *AvHost) {
 	host = &AvHost{
-		Items: make([]*AvItem, 0),
-		mux:   &http.ServeMux{},
+		Items:   make([]*AvStream, 0),
+		Remotes: remotes,
+		mux:     &http.ServeMux{},
 	}
 	if len(port) == 0 {
 		port = "8080"
@@ -32,93 +36,268 @@ func NewAvHost(address string, port string) (host *AvHost) {
 	}
 
 	host.Url = address + ":" + port
-
 	host.Server = &http.Server{
 		Addr:    host.Url,
 		Handler: host.mux,
 	}
+	var err error
+	host.tmpl, err = template.New("response").Parse(`<div id="response-div" class="fade-it">{{.}}</div>`)
+	if err != nil {
+		log.Printf("NewAvHost Parse Template: %v", err)
+	}
 
-	host.tmpl, _ = template.New("response").Parse(`<div id="response-div" class="fade-it">{{.}}</div>`)
-
-	return
-}
-
-func (host *AvHost) MakeLocal(listener StreamListener) {
-	var (
-		err error
-		mux = host.Server.Handler.(*http.ServeMux)
-	)
-
-	mux.HandleFunc("/host", func(w http.ResponseWriter, r *http.Request) {
+	host.mux.HandleFunc("/host", func(w http.ResponseWriter, r *http.Request) {
 		buf, err := json.Marshal(host)
 		if err != nil {
 			buf = ([]byte)(err.Error())
 		}
-		w.Write(buf)
+		_, err = w.Write(buf)
+		if err != nil {
+			log.Printf("Handle '/host': %v %s", err, string(buf))
+		}
+
 	})
 
-	webcams := FindWebcams()
-	var id int = -1
-	for _, webcam := range webcams {
+	go func() {
+		err := host.Server.ListenAndServe()
+		if err != nil {
+			log.Fatalf("Failed to serve host at: %v '%v'", host.Url, err)
+		}
+	}()
+	return
+}
 
-		// requested configuration, actual configuration determined
-		// when opened depending on what's available for that camera
+func (host *AvHost) Monitor(done chan int) {
+	const waitPeriod = time.Millisecond * 1000
+	for {
+		select {
+		case <-done:
+			log.Print("AvHost Monitor Done")
+			return
+		default:
+			break
+		}
+
+		host.scanLocal()
+		time.Sleep(waitPeriod)
+		host.scanRemotes()
+		time.Sleep(waitPeriod)
+	}
+}
+
+func (host *AvHost) Mux() *http.ServeMux { return host.mux }
+
+func (host *AvHost) Quit() {
+	for _, avStream := range host.Items {
+		if avStream.IsOpened() {
+			log.Printf("Stopping '%s'\n", avStream.Source.Path())
+			avStream.Server.Quit()
+		}
+	}
+}
+
+func (host *AvHost) scanLocal() {
+	devices := v4l.FindDevices()
+	for _, info := range devices {
+		if !info.Camera {
+			continue
+		}
+		if info.DriverName != UVCVideoDriver {
+			continue
+		}
+
+		avStream := host.findAvStreamPath(info.Path)
+		if avStream != nil {
+			if avStream.Source.IsOpened() {
+				continue
+			}
+			log.Printf("found path %v, %v driver %v", avStream.Url, info.Path, info.DriverName)
+		} else {
+			avStream = host.findAvStreamClosed()
+			if avStream != nil {
+				log.Printf("found closed %v, %v driver %v", avStream.Url, info.Path, info.DriverName)
+			}
+		}
+
+		localcam := NewLocalCam(&info)
 		config := &VideoConfig{
 			Codec:  "MJPG",
 			Width:  1920,
 			Height: 1080,
 			FPS:    30,
 		}
-
-		err = webcam.Open(config)
+		err := localcam.Open(config)
 		if err != nil {
-			log.Print(err)
+			log.Print("ScanLocal ", err)
+			return
+		}
+		// avStream = NewAvStream(len(host.Streams), config, localcam)
+		if avStream == nil {
+			host.addStream(localcam, &localcam.videoConfig, nil, nil)
+		} else {
+			host.updateStream(avStream, localcam, &localcam.videoConfig)
+		}
+
+	}
+	return
+}
+
+func (host *AvHost) scanRemotes() {
+	// log.Print("REMOTES ", host.Remotes)
+	for _, addr := range host.Remotes {
+		remote, err := host.fetchRemote(addr)
+		if err != nil {
+			log.Printf("Fetching remote %s. %s", addr, err)
 			continue
 		}
+		// log.Printf("Fetched remote %s. %v", addr, remote)
 
-		id++
-
-		avItem := NewAvItem(id, config, webcam)
-		avItem.server = NewVideoServer(id, webcam, &avItem.Config, nil, listener)
-		mux.Handle(avItem.Url, avItem.server.Stream())
-
-		controller := AvControllers[config.Driver]
-		mux.HandleFunc(avItem.Url+"/reset", func(http.ResponseWriter, *http.Request) {
-			for key, v4lCtrl := range webcam.Controls {
-				if _, keyFound := controller[key]; keyFound {
-					webcam.device.SetControl(v4lCtrl.CID, v4lCtrl.Default)
+		for _, stream := range remote.Items {
+			streamAddr := addr + stream.Url
+			avStream := host.findAvStreamPath(streamAddr)
+			if avStream != nil {
+				if avStream.Source.IsOpened() {
+					continue
+				}
+				log.Printf("found remote %v, %v", avStream.Url, addr)
+			} else {
+				avStream = host.findAvStreamClosed()
+				if avStream != nil {
+					log.Printf("found remote closed %v, %v", avStream.Url, addr)
 				}
 			}
-		})
 
-		for key, v4lCtrl := range webcam.Controls {
-			if avCtrls, keyFound := controller[key]; keyFound {
-				for _, avCtrl := range avCtrls {
-					mux.HandleFunc(avItem.Url+avCtrl.Url,
-						host.LocalHandler(webcam, v4lCtrl, avCtrl))
-				}
+			remotecam := NewRemoteCam(streamAddr)
+			err := remotecam.Open(&stream.Config)
+			if err != nil {
+				log.Print("ScanRemotes ", err)
+				return
+			}
+			if avStream == nil {
+				host.addStream(remotecam, &stream.Config, nil, nil)
+			} else {
+				host.updateStream(avStream, remotecam, &stream.Config)
 			}
 		}
-
-		host.Items = append(host.Items, avItem)
 	}
+	return
 }
 
-func (host *AvHost) ListenAndServe() error {
-	for _, avItem := range host.Items {
-		go avItem.server.Serve()
+func (host *AvHost) updateStream(avStream *AvStream,
+	source VideoSource, config *VideoConfig) {
+	avStream.Source = source
+	avStream.Config = *config
+	if avStream.Server == nil {
+		log.Fatal("avStream.Server==nil")
 	}
-	return host.Server.ListenAndServe()
+
+	avStream.Server.Source = source
+	go avStream.Server.Serve()
+	log.Printf("Updated stream %s -> %s", avStream.Url, avStream.Source.Path())
 }
 
-func (host *AvHost) Quit() {
-	for _, avItem := range host.Items {
-		log.Printf("Stopping '%s'\n", avItem.source.Path())
-		avItem.server.Quit()
-	}
+func (host *AvHost) addStream(
+	source VideoSource, config *VideoConfig,
+	audioSource AudioSource,
+	listener StreamListener) (avStream *AvStream) {
+
+	id := len(host.Items)
+	avStream = NewAvStream(id, config, source)
+	avStream.Server = NewAvServer(id, source, &avStream.Config, nil, listener)
+	host.Items = append(host.Items, avStream)
+	go avStream.Server.Serve()
+	host.createAvStreamHandlers(id, config.Driver)
+	log.Printf("Added stream %s -> %s", avStream.Url, avStream.Source.Path())
+	return
 }
 
-func (host *AvHost) FetchRemote(remoteAddr string) (remote *AvHost, err error) {
+func (host *AvHost) createAvStreamHandlers(id int, driver string) {
+	mux := host.mux
+	avStream := host.Items[id]
+	host.mux.Handle(avStream.Url, avStream.Server.Stream())
+	mux.HandleFunc(avStream.Url+"/",
+		func(w http.ResponseWriter, r *http.Request) {
+			url, _ := strings.CutPrefix(r.URL.Path, avStream.Url)
+			switch avStream.Source.(type) {
+			case *LocalCam:
+				localcam := avStream.Source.(*LocalCam)
+				if url == "/reset" {
+					err := localcam.Reset()
+					if err != nil {
+						log.Println("AvStream Reset Handler: ", err, r.URL.Path)
+					}
+					return
+				}
+
+				ctrl, ok := AvUrlToName[url]
+				if !ok {
+					log.Println("Unsupported AvStream Request: ", r.URL.Path)
+					return
+				}
+
+				info, ok := localcam.Controls[ctrl.Name]
+				if !ok {
+					log.Printf("Unsupported AvStream Control: %s '%s'",
+						r.URL.Path, ctrl.Name)
+					return
+				}
+
+				value, err := localcam.device.GetControl(info.CID)
+				if err != nil {
+					log.Println("Unsupported AvStream Control Value: ", r.URL.Path, err)
+					return
+				}
+
+				v4lCtrl := localcam.Controls[ctrl.Name]
+				newValue := value + v4lCtrl.Step*ctrl.Control.Multiplier
+				if newValue >= v4lCtrl.Min && newValue <= v4lCtrl.Max {
+					value = newValue
+					err = localcam.device.SetControl(v4lCtrl.CID, value)
+					if err != nil {
+						log.Println("Set Control AvStream: ", r.URL.Path, err)
+						return
+					}
+				}
+
+			case *RemoteCam:
+				resp, err := http.Get(avStream.Source.Path() + url)
+				if err != nil {
+					log.Println("Set Control AvStream: ", r.URL.Path, err)
+					return
+				}
+				defer resp.Body.Close()
+				buf, err := io.ReadAll(resp.Body)
+				if err != nil {
+					log.Print(err)
+					return
+				}
+				w.Write(buf)
+
+			default:
+				log.Println("Unsupported AvStream Requested: ", r.URL.Path)
+				return
+			}
+		})
+}
+
+func (host *AvHost) findAvStreamPath(path string) (avStream *AvStream) {
+	for _, avStream = range host.Items {
+		if avStream.Source.Path() == path {
+			return
+		}
+	}
+	return nil
+}
+func (host *AvHost) findAvStreamClosed() (avStream *AvStream) {
+	for _, avStream = range host.Items {
+		if !avStream.IsOpened() {
+			return
+		}
+	}
+	return nil
+}
+
+func (host *AvHost) fetchRemote(remoteAddr string) (remote *AvHost, err error) {
 	var (
 		resp *http.Response
 	)
@@ -136,84 +315,3 @@ func (host *AvHost) FetchRemote(remoteAddr string) (remote *AvHost, err error) {
 	}
 	return
 }
-
-func (host *AvHost) MakeProxy(remote *AvHost, listener StreamListener) {
-	var (
-		err error
-		id  = len(host.Items)
-		mux = host.Server.Handler.(*http.ServeMux)
-	)
-
-	for index, remoteItem := range remote.Items {
-		var (
-			remoteItemUrl = "http://" + remote.Url + remoteItem.Url
-			config        = remoteItem.Config
-			ipcam         = NewIpcam(remoteItemUrl)
-		)
-
-		config.Path = remoteItemUrl
-		avItem := NewAvItem(id+index, &config, ipcam)
-		err = ipcam.Open(&avItem.Config)
-		if err != nil {
-			log.Print(err)
-			continue
-		}
-
-		avItem.server = NewVideoServer(id, ipcam, &avItem.Config, nil, listener)
-		mux.Handle(avItem.Url, avItem.server.Stream())
-		mux.HandleFunc(avItem.Url+"/reset",
-			host.RemoteHandler(remoteItemUrl, "/reset"))
-
-		controller := AvControllers[config.Driver]
-		for _, controls := range controller {
-			for _, control := range controls {
-				mux.HandleFunc(avItem.Url+control.Url,
-					host.RemoteHandler(remoteItemUrl, control.Url))
-			}
-		}
-
-		host.Items = append(host.Items, avItem)
-		log.Printf("added proxy at %s%s\n\tfor remote %s\n",
-			host.Url, avItem.Url, remoteItemUrl)
-	}
-	return
-}
-
-func (host *AvHost) RemoteHandler(remoteItemUrl string, command string) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		resp, err := http.Get(remoteItemUrl + command)
-		if err != nil {
-			log.Print(err)
-			return
-		}
-		defer resp.Body.Close()
-		var buf []byte
-		buf, err = io.ReadAll(resp.Body)
-		if err != nil {
-			log.Print(err)
-			return
-		}
-		w.Write(buf)
-	}
-}
-
-func (host *AvHost) LocalHandler(webcam *Webcam, v4lCtrl v4l.ControlInfo, avCtrl AvControl) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		value, err := webcam.device.GetControl(v4lCtrl.CID)
-		if err != nil {
-			log.Print(err)
-			return
-		}
-
-		newValue := value + v4lCtrl.Step*avCtrl.Multiplier
-		if newValue >= v4lCtrl.Min && newValue <= v4lCtrl.Max {
-			value = newValue
-			webcam.device.SetControl(v4lCtrl.CID, value)
-		}
-		// tmpl := host.tmpl.Lookup("response")
-		host.tmpl.Execute(w, value)
-		// tmpl.Execute(os.Stderr, value)
-	}
-}
-
-func (host *AvHost) Mux() *http.ServeMux { return host.mux }

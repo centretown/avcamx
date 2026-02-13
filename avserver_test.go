@@ -4,10 +4,32 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/korandiz/v4l"
 )
 
+type testListener struct {
+}
+
+func (t *testListener) StreamOn(id int) {
+	fmt.Println(id, " is on")
+}
+
+func (t *testListener) StreamOff(id int) {
+	fmt.Println(id, " is off")
+}
+
+func TestServerFind(t *testing.T) {
+	webcams := FindLocalCams()
+	for k, v := range webcams {
+		t.Log(k, v)
+	}
+}
+
 func TestServer(t *testing.T) {
-	webcam := NewWebcam("/dev/video0")
+	var info v4l.DeviceInfo
+
+	webcam := NewLocalCam(&info)
 	config := &VideoConfig{
 		Codec:  "MJPG",
 		Width:  1920,
@@ -15,7 +37,7 @@ func TestServer(t *testing.T) {
 		FPS:    30,
 	}
 
-	server := NewVideoServer(0, webcam, config, nil, nil)
+	server := NewAvServer(0, webcam, config, nil, nil)
 
 	err := webcam.Open(config)
 	if err != nil {

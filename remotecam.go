@@ -6,9 +6,9 @@ import (
 	"github.com/mattn/go-mjpeg"
 )
 
-var _ VideoSource = (*Ipcam)(nil)
+var _ VideoSource = (*RemoteCam)(nil)
 
-type Ipcam struct {
+type RemoteCam struct {
 	path     string
 	config   *VideoConfig
 	decoder  *mjpeg.Decoder
@@ -17,30 +17,30 @@ type Ipcam struct {
 	State    any
 }
 
-func NewIpcam(path string) *Ipcam {
-	ipc := &Ipcam{
+func NewRemoteCam(path string) *RemoteCam {
+	ipc := &RemoteCam{
 		path: path,
 	}
 	return ipc
 }
 
-func (ipc *Ipcam) Path() string {
+func (ipc *RemoteCam) Path() string {
 	return ipc.path
 }
 
-func (ipc *Ipcam) Config() *VideoConfig {
+func (ipc *RemoteCam) Config() *VideoConfig {
 	return ipc.config
 }
 
-func (ipc *Ipcam) Close() {
+func (ipc *RemoteCam) Close() {
 	ipc.isOpened = false
 }
 
-func (ipc *Ipcam) IsOpened() bool {
+func (ipc *RemoteCam) IsOpened() bool {
 	return ipc.isOpened
 }
 
-func (ipc *Ipcam) Open(config *VideoConfig) (err error) {
+func (ipc *RemoteCam) Open(config *VideoConfig) (err error) {
 	ipc.config = config
 	ipc.decoder, err = mjpeg.NewDecoderFromURL(ipc.path)
 	if err != nil {
@@ -52,7 +52,7 @@ func (ipc *Ipcam) Open(config *VideoConfig) (err error) {
 	return
 }
 
-func (ipc *Ipcam) Read() (buf []byte, err error) {
+func (ipc *RemoteCam) Read() (buf []byte, err error) {
 	buf, err = ipc.decoder.DecodeRaw()
 	if err != nil {
 		log.Println("DecodeRaw", err)
