@@ -65,7 +65,13 @@ func NewAvHost(address string, port string, remotes []string, interval int, stre
 	}
 
 	host.mux.HandleFunc("/host", func(w http.ResponseWriter, r *http.Request) {
-		buf, err := json.Marshal(host)
+		copy := &AvHost{
+			Url:       host.Url,
+			Streamers: host.Streams(),
+			Remotes:   host.Remotes,
+			Interval:  host.Interval,
+		}
+		buf, err := json.Marshal(copy)
 		if err != nil {
 			buf = ([]byte)(err.Error())
 			log.Printf("Handle '/host': %v", err)
