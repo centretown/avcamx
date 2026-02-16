@@ -27,7 +27,7 @@ func main() {
 
 	avFlags.Print()
 
-	host := avcamx.NewAvHost(avFlags.HostAddr, avFlags.HostPort, avFlags.Remotes, 1000)
+	host := avcamx.NewAvHost(avFlags.HostAddr, avFlags.HostPort, avFlags.Remotes, 1000, nil)
 
 	log.Printf("\nServing %s...", host.Url)
 

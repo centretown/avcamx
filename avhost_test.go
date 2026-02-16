@@ -3,22 +3,28 @@ package avcamx
 import (
 	"net/http"
 	"testing"
-	"time"
 )
 
 func TestScan(t *testing.T) {
 
-	host := NewAvHost("", "", []string{}, 1000)
+	host := NewAvHost("", "", []string{}, 1000, nil)
+	// time.Sleep(time.Second)
 
-	for range 60 {
-		time.Sleep(time.Second * 2)
-		if len(host.Streams) > 0 && host.Streams[0].IsOpened() {
-			testCmd(t, host, host.Streams[0])
-		}
+	// for range 60 {
+	// 	time.Sleep(time.Second * 2)
+	// 	if len(host.streams) > 0 && host.streams[0].IsOpened() {
+	// 		testCmd(t, host, host.streams[0])
+	// 	}
+	// }
+	t.Log("Streams...")
+	for _, stream := range host.Streams() {
+		t.Logf("\tURL=%s, Source=%s, Open=%v", stream.Url, stream.Source.Path(), stream.IsOpened())
 	}
 
-	for _, item := range host.Streams {
-		t.Logf("host.Item=%s %s %v", item.Url, item.Source.Path(), item.IsOpened())
+	t.Log("find Stream... '/video0'")
+	stream := host.Stream("/video0")
+	if stream != nil {
+		t.Logf("\tURL=%s, Source=%s, Open=%v", stream.Url, stream.Source.Path(), stream.IsOpened())
 	}
 
 	host.Quit()

@@ -243,30 +243,9 @@ func (vs *AvServer) Serve() {
 		buf, err = vs.Source.Read()
 		if err != nil {
 			log.Printf("%v read error %v\n", vs.Source.Path(), err)
-			// vs.Source.Close()
 			return
-			// 	if retry > 10 {
-			// 		delay = DELAY_HIBERNATE
-			// 	} else {
-			// 		delay = DELAY_RETRY
-			// 	}
-
-			// 	retry++
-			// 	log.Printf("%v is unavailable, attempts=%d next in %.0f seconds\n",
-			// 		vs.Source.Path(), retry, delay.Seconds())
-			// 	if vs.Source.IsOpened() {
-			// 		vs.Source.Close()
-			// 	}
-			// 	err = vs.Open()
-			// 	if err != nil {
-			// 		log.Printf("Shutting down %s. Reason: %v", vs.Source.Path(), err)
-			// 		vs.Busy = false
-			// 		return
-			// 	}
-			// 	continue
 		}
-		// delay = DELAY_NORMAL
-		// retry = 0
+
 		vs.streamHook.Update(buf)
 
 		if vs.Recording {

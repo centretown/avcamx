@@ -13,30 +13,37 @@ import (
 )
 
 type AvHost struct {
-	Url      string
-	Streams  []*AvStream
-	Remotes  []string
-	Interval int
-	Server   *http.Server       `json:"-"`
-	tmpl     *template.Template `json:"-"`
-	mux      *http.ServeMux     `json:"-"`
-	cmd      chan int           `json:"-"`
-	buf      chan []byte        `json:"-"`
+	Url            string
+	Streamers      []*AvStream
+	Remotes        []string
+	Interval       int
+	Server         *http.Server       `json:"-"`
+	streamListener StreamListener     `json:"-"`
+	tmpl           *template.Template `json:"-"`
+	mux            *http.ServeMux     `json:"-"`
+	cmdChan        chan int           `json:"-"`
+	streamsChan    chan []*AvStream   `json:"-"`
+	urlChan        chan string        `json:"-"`
+	streamChan     chan *AvStream     `json:"-"`
 }
 
 const (
 	AV_QUIT int = iota + 1
-	AV_HOST
+	AV_STREAMS
+	AV_URL
 )
 
-func NewAvHost(address string, port string, remotes []string, interval int) (host *AvHost) {
+func NewAvHost(address string, port string, remotes []string, interval int, streamListener StreamListener) (host *AvHost) {
 	host = &AvHost{
-		Streams:  make([]*AvStream, 0),
-		Remotes:  remotes,
-		Interval: interval,
-		mux:      &http.ServeMux{},
-		cmd:      make(chan int),
-		buf:      make(chan []byte),
+		Streamers:      make([]*AvStream, 0),
+		Remotes:        remotes,
+		Interval:       interval,
+		streamListener: streamListener,
+		mux:            &http.ServeMux{},
+		cmdChan:        make(chan int),
+		streamsChan:    make(chan []*AvStream),
+		urlChan:        make(chan string),
+		streamChan:     make(chan *AvStream),
 	}
 	if len(port) == 0 {
 		port = "8080"
@@ -73,7 +80,7 @@ func NewAvHost(address string, port string, remotes []string, interval int) (hos
 	go func() {
 		err := host.Server.ListenAndServe()
 		if err != nil {
-			log.Fatalf("Failed to serve host at: %v '%v'", host.Url, err)
+			log.Printf("Host at: %v '%v'", host.Url, err)
 		}
 	}()
 
@@ -81,45 +88,92 @@ func NewAvHost(address string, port string, remotes []string, interval int) (hos
 	return
 }
 
+func (host *AvHost) Stream(url string) (stream *AvStream) {
+	host.urlChan <- url
+	stream = <-host.streamChan
+	return
+}
+
+func (host *AvHost) Streams() (streams []*AvStream) {
+	host.cmdChan <- AV_STREAMS
+	streams = <-host.streamsChan
+	return
+}
+
+func (host *AvHost) findStream(url string) *AvStream {
+	for _, s := range host.Streamers {
+		if s.Url == url {
+			return &AvStream{
+				ID:     s.ID,
+				Url:    s.Url,
+				Config: s.Config,
+				Source: s.Source,
+				Server: s.Server,
+			}
+		}
+	}
+	return nil
+}
+
+func (host *AvHost) copyStreams() (streams []*AvStream) {
+	streams = make([]*AvStream, len(host.Streamers))
+	for i, stream := range host.Streamers {
+		copy := &AvStream{
+			ID:     stream.ID,
+			Url:    stream.Url,
+			Config: stream.Config,
+			Source: stream.Source,
+			Server: stream.Server,
+		}
+		streams[i] = copy
+	}
+	return
+}
+
 func (host *AvHost) Monitor() {
 	var (
 		waitPeriod = time.Millisecond * time.Duration(host.Interval)
 		nextScan   = time.Now()
+		now        time.Time
 	)
 
 	for {
+		now = time.Now()
+		if nextScan.Compare(now) <= 0 {
+			host.scanLocal()
+			host.scanRemotes()
+			nextScan = now.Add(waitPeriod)
+			// continue
+		}
+
 		select {
-		case cmd := <-host.cmd:
+		case cmd := <-host.cmdChan:
 			switch cmd {
 			case AV_QUIT:
 				log.Print("AvHost Monitor Done")
 				return
-			case AV_HOST:
+			case AV_STREAMS:
+				host.streamsChan <- host.copyStreams()
 			}
+		case url := <-host.urlChan:
+			host.streamChan <- host.findStream(url)
 		default:
+			time.Sleep(time.Millisecond * 10)
 		}
 
-		if nextScan.Compare(time.Now()) <= 0 {
-			host.scanLocal()
-			host.scanRemotes()
-			nextScan.Add(waitPeriod)
-			continue
-		}
-
-		time.Sleep(time.Millisecond * 1000)
 	}
 }
 
 func (host *AvHost) Mux() *http.ServeMux { return host.mux }
 
 func (host *AvHost) Quit() {
-	host.cmd <- AV_QUIT
-	for _, avStream := range host.Streams {
+	for _, avStream := range host.Streamers {
 		if avStream.IsOpened() {
 			log.Printf("Stopping '%s'\n", avStream.Source.Path())
 			avStream.Server.Quit()
 		}
 	}
+	host.cmdChan <- AV_QUIT
 }
 
 func (host *AvHost) scanLocal() {
@@ -159,7 +213,7 @@ func (host *AvHost) scanLocal() {
 		}
 		// avStream = NewAvStream(len(host.Streams), config, localcam)
 		if avStream == nil {
-			host.addStream(localcam, &localcam.videoConfig, nil, nil)
+			host.addStream(localcam, &localcam.videoConfig, nil, host.streamListener)
 		} else {
 			host.updateStream(avStream, localcam, &localcam.videoConfig)
 		}
@@ -178,7 +232,7 @@ func (host *AvHost) scanRemotes() {
 		}
 		// log.Printf("Fetched remote %s. %v", addr, remote)
 
-		for _, stream := range remote.Streams {
+		for _, stream := range remote.Streamers {
 			streamAddr := addr + stream.Url
 			avStream := host.findAvStreamPath(streamAddr)
 			if avStream != nil {
@@ -200,7 +254,7 @@ func (host *AvHost) scanRemotes() {
 				return
 			}
 			if avStream == nil {
-				host.addStream(remotecam, &stream.Config, nil, nil)
+				host.addStream(remotecam, &stream.Config, nil, host.streamListener)
 			} else {
 				host.updateStream(avStream, remotecam, &stream.Config)
 			}
@@ -227,10 +281,10 @@ func (host *AvHost) addStream(
 	audioSource AudioSource,
 	listener StreamListener) (avStream *AvStream) {
 
-	id := len(host.Streams)
+	id := len(host.Streamers)
 	avStream = NewAvStream(id, config, source)
 	avStream.Server = NewAvServer(id, source, &avStream.Config, nil, listener)
-	host.Streams = append(host.Streams, avStream)
+	host.Streamers = append(host.Streamers, avStream)
 	go avStream.Server.Serve()
 	host.createAvStreamHandlers(id, config.Driver)
 	log.Printf("Added stream %s -> %s", avStream.Url, avStream.Source.Path())
@@ -239,7 +293,7 @@ func (host *AvHost) addStream(
 
 func (host *AvHost) createAvStreamHandlers(id int, driver string) {
 	mux := host.mux
-	avStream := host.Streams[id]
+	avStream := host.Streamers[id]
 	host.mux.Handle(avStream.Url, avStream.Server.Stream())
 	mux.HandleFunc(avStream.Url+"/",
 		func(w http.ResponseWriter, r *http.Request) {
@@ -251,6 +305,7 @@ func (host *AvHost) createAvStreamHandlers(id int, driver string) {
 					err := localcam.Reset()
 					if err != nil {
 						log.Println("AvStream Reset Handler: ", err, r.URL.Path)
+						host.tmpl.Execute(w, err.Error())
 					}
 					return
 				}
@@ -271,6 +326,7 @@ func (host *AvHost) createAvStreamHandlers(id int, driver string) {
 				value, err := localcam.device.GetControl(info.CID)
 				if err != nil {
 					log.Println("Unsupported AvStream Control Value: ", r.URL.Path, err)
+					host.tmpl.Execute(w, err.Error())
 					return
 				}
 
@@ -281,9 +337,12 @@ func (host *AvHost) createAvStreamHandlers(id int, driver string) {
 					err = localcam.device.SetControl(v4lCtrl.CID, value)
 					if err != nil {
 						log.Println("Set Control AvStream: ", r.URL.Path, err)
+						// w.Write(([]byte)(err.Error()))
+						host.tmpl.Execute(w, err.Error())
 						return
 					}
 				}
+				host.tmpl.Execute(w, value)
 
 			case *RemoteCam:
 				resp, err := http.Get(avStream.Source.Path() + url)
@@ -307,7 +366,7 @@ func (host *AvHost) createAvStreamHandlers(id int, driver string) {
 }
 
 func (host *AvHost) findAvStreamPath(path string) (avStream *AvStream) {
-	for _, avStream = range host.Streams {
+	for _, avStream = range host.Streamers {
 		if avStream.Source.Path() == path {
 			return
 		}
@@ -315,7 +374,7 @@ func (host *AvHost) findAvStreamPath(path string) (avStream *AvStream) {
 	return nil
 }
 func (host *AvHost) findAvStreamClosed() (avStream *AvStream) {
-	for _, avStream = range host.Streams {
+	for _, avStream = range host.Streamers {
 		if !avStream.IsOpened() {
 			return
 		}

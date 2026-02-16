@@ -2,6 +2,7 @@ package avcamx
 
 import (
 	"fmt"
+	"log"
 )
 
 type AvStream struct {
@@ -37,15 +38,19 @@ func (item *AvStream) IsRecording() bool {
 }
 
 func (item *AvStream) RecordCmd(seconds int) {
-	if item.Server != nil {
-		item.Server.RecordCmd(seconds)
+	if item.Server == nil {
+		log.Print("RecordCmd No server")
+		return
 	}
+	item.Server.RecordCmd(seconds)
 }
 
 func (item *AvStream) StopRecordCmd() {
-	if item.Server != nil {
-		item.Server.StopRecordCmd()
+	if item.Server == nil {
+		log.Print("StopRecordCmd No server")
+		return
 	}
+	item.Server.StopRecordCmd()
 }
 
 func (item *AvStream) SetRecordListener(streamListener StreamListener) {
