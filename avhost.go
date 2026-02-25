@@ -225,7 +225,6 @@ func (host *AvHost) scanLocal() {
 		}
 
 	}
-	return
 }
 
 func (host *AvHost) scanRemotes() {
@@ -266,7 +265,6 @@ func (host *AvHost) scanRemotes() {
 			}
 		}
 	}
-	return
 }
 
 func (host *AvHost) updateStream(avStream *AvStream,
