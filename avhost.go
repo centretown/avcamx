@@ -138,18 +138,23 @@ func (host *AvHost) copyStreams() (streams []*AvStream) {
 
 func (host *AvHost) Monitor() {
 	var (
-		waitPeriod = time.Millisecond * time.Duration(host.Interval)
-		nextScan   = time.Now()
-		now        time.Time
+		localPeriod  = time.Second * 5
+		localScan    = time.Now()
+		remotePeriod = time.Minute * 2
+		remoteScan   = time.Now()
+		now          time.Time
 	)
 
 	for {
 		now = time.Now()
-		if nextScan.Compare(now) <= 0 {
+		if localScan.Compare(now) <= 0 {
 			host.scanLocal()
+			localScan = now.Add(localPeriod)
+		}
+
+		if remoteScan.Compare(now) <= 0 {
 			host.scanRemotes()
-			nextScan = now.Add(waitPeriod)
-			// continue
+			remoteScan = now.Add(remotePeriod)
 		}
 
 		select {
@@ -164,7 +169,7 @@ func (host *AvHost) Monitor() {
 		case url := <-host.urlChan:
 			host.streamChan <- host.findStream(url)
 		default:
-			time.Sleep(time.Millisecond * 10)
+			time.Sleep(time.Second)
 		}
 
 	}

@@ -28,6 +28,8 @@ type AvFlags struct {
 	HostPort   string
 	Remotes    []string
 	OutputBase string
+	Update     bool
+	Recorder   bool
 }
 
 func NewAvFlags() (avFlags *AvFlags) {
@@ -46,21 +48,29 @@ var (
 		HostAddr:   GetOutboundIP(),
 		HostPort:   "9000",
 		OutputBase: "/mnt/molly/output",
+		Update:     false,
+		Recorder:   false,
 	}
 
 	remoteAddrUsage = "remote host ip address (more than one)"
 	hostAddrUsage   = "host ip address"
 	hostPortUsage   = "host ip port number"
 	outputBaseUsage = "recording directory path"
+	updateUsage     = "update default values"
 )
 
 func (avFlags *AvFlags) Print() {
-	fmt.Printf("Host: %s:%s\n", avFlags.HostAddr, avFlags.HostPort)
-	fmt.Printf("Remotes:\n")
-	for _, adr := range avFlags.Remotes {
-		fmt.Printf("- %s\n", adr)
-	}
-	fmt.Printf("MP3 output to: %s\n", avFlags.OutputBase)
+	flag.VisitAll(func(f *flag.Flag) {
+		fmt.Printf("%v: %v\n", f.Usage, f.Value)
+	})
+
+	// fmt.Printf("Host: %s:%s\n", avFlags.HostAddr, avFlags.HostPort)
+	// fmt.Printf("Remotes:\n")
+	// for _, adr := range avFlags.Remotes {
+	// 	fmt.Printf("- %s\n", adr)
+	// }
+	// fmt.Printf("MP3 output to: %s\n", avFlags.OutputBase)
+	// fmt.Printf("Update default values: %v\n", avFlags.Update)
 }
 
 func (avFlags *AvFlags) Parse() {
@@ -70,8 +80,25 @@ func (avFlags *AvFlags) Parse() {
 	flag.StringVar(&avFlags.HostAddr, "a", avDefaultFlags.HostAddr, hostAddrUsage)
 	flag.StringVar(&avFlags.HostPort, "port", avDefaultFlags.HostPort, hostPortUsage)
 	flag.StringVar(&avFlags.HostPort, "p", avDefaultFlags.HostPort, hostPortUsage)
+	flag.StringVar(&avFlags.OutputBase, "output", avDefaultFlags.OutputBase, outputBaseUsage)
 	flag.StringVar(&avFlags.OutputBase, "o", avDefaultFlags.OutputBase, outputBaseUsage)
+	flag.BoolVar(&avFlags.Update, "update", avDefaultFlags.Update, updateUsage)
+	flag.BoolVar(&avFlags.Update, "u", avDefaultFlags.Update, updateUsage)
+
 	flag.Parse()
+
+	if avFlags.Update {
+		exists := avFlags.HasFile()
+		err := avFlags.Save()
+		if err != nil {
+			log.Printf("Error updating configuration file %s. %s", ConfigName, err)
+		} else if exists {
+			log.Print("Updated configuration file. ", ConfigName)
+		} else {
+			log.Print("Created configuration file. ", ConfigName)
+		}
+	}
+
 }
 
 func (avFlags *AvFlags) HasFile() bool {
