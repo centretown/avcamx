@@ -169,7 +169,7 @@ func (host *AvHost) Monitor() {
 		case url := <-host.urlChan:
 			host.streamChan <- host.findStream(url)
 		default:
-			time.Sleep(time.Second)
+			time.Sleep(time.Millisecond * 30)
 		}
 
 	}

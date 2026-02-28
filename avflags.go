@@ -29,7 +29,7 @@ type AvFlags struct {
 	Remotes    []string
 	OutputBase string
 	Update     bool
-	Recorder   bool
+	Recorders  int
 }
 
 func NewAvFlags() (avFlags *AvFlags) {
@@ -49,7 +49,7 @@ var (
 		HostPort:   "9000",
 		OutputBase: "/mnt/molly/output",
 		Update:     false,
-		Recorder:   false,
+		Recorders:  0,
 	}
 
 	remoteAddrUsage = "remote host ip address (more than one)"
