@@ -112,8 +112,8 @@ func (host *AvHost) Monitor() {
 		localPeriod = time.Second * 5
 		localScan   = time.Now()
 		now         time.Time
-		done        = make(chan int)
-		update      = make(chan string)
+		UDPDone     = make(chan int)
+		UDPUpdate   = make(chan string)
 		err         error
 		conn        net.Conn
 	)
@@ -126,7 +126,7 @@ func (host *AvHost) Monitor() {
 	defer conn.Close()
 
 	host.scanRemotes()
-	go PollUDP(done, update)
+	go PollUDP(UDPDone, UDPUpdate)
 
 	for {
 
@@ -144,11 +144,12 @@ func (host *AvHost) Monitor() {
 		}
 
 		select {
-		case remoteAddr := <-update:
+		case remoteAddr := <-UDPUpdate:
 			host.scanRemote(remoteAddr)
 		case cmd := <-host.cmdChan:
 			switch cmd {
 			case AV_QUIT:
+				UDPDone <- 1
 				log.Print("AvHost Monitor Done")
 				return
 			case AV_STREAMS:
