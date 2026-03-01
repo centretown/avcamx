@@ -60,7 +60,7 @@ func PollUDP(done chan int, updateAddr chan string) error {
 	for {
 		select {
 		case <-done:
-			break
+			return nil
 		default:
 			time.Sleep(time.Second)
 		}
@@ -82,5 +82,5 @@ func PollUDP(done chan int, updateAddr chan string) error {
 		// conn.WriteToUDP([]byte("Hello UDP Client\n"), addr)
 	}
 
-	return nil
+	// return nil
 }
