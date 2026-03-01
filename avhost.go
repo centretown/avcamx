@@ -106,6 +106,54 @@ func (host *AvHost) Streams() (streams []*AvStream) {
 	return
 }
 
+func (host *AvHost) Monitor() {
+	var (
+		localPeriod = time.Second * 5
+		localScan   = time.Now()
+		now         time.Time
+		done        = make(chan int)
+		update      = make(chan string)
+	)
+
+	host.scanRemotes()
+	go PollUDP(done, update)
+
+	for {
+
+		now = time.Now()
+		if localScan.Compare(now) <= 0 {
+			localScan = now.Add(localPeriod)
+			update_count := host.scanLocal()
+			if update_count > 0 {
+				err := DialUDP("update")
+				if err != nil {
+					log.Printf("Monitor:DialUDP: %v", err)
+					continue
+				}
+			}
+		}
+
+		select {
+		case remoteAddr := <-update:
+			log.Print(remoteAddr)
+			host.scanRemote(remoteAddr)
+		case cmd := <-host.cmdChan:
+			switch cmd {
+			case AV_QUIT:
+				log.Print("AvHost Monitor Done")
+				return
+			case AV_STREAMS:
+				host.streamsChan <- host.copyStreams()
+			}
+		case url := <-host.urlChan:
+			host.streamChan <- host.findStream(url)
+		default:
+			time.Sleep(time.Millisecond * 100)
+		}
+
+	}
+}
+
 func (host *AvHost) findStream(url string) *AvStream {
 	for _, s := range host.Streamers {
 		if s.Url == url {
@@ -136,45 +184,6 @@ func (host *AvHost) copyStreams() (streams []*AvStream) {
 	return
 }
 
-func (host *AvHost) Monitor() {
-	var (
-		localPeriod  = time.Second * 5
-		localScan    = time.Now()
-		remotePeriod = time.Minute * 2
-		remoteScan   = time.Now()
-		now          time.Time
-	)
-
-	for {
-		now = time.Now()
-		if localScan.Compare(now) <= 0 {
-			host.scanLocal()
-			localScan = now.Add(localPeriod)
-		}
-
-		if remoteScan.Compare(now) <= 0 {
-			host.scanRemotes()
-			remoteScan = now.Add(remotePeriod)
-		}
-
-		select {
-		case cmd := <-host.cmdChan:
-			switch cmd {
-			case AV_QUIT:
-				log.Print("AvHost Monitor Done")
-				return
-			case AV_STREAMS:
-				host.streamsChan <- host.copyStreams()
-			}
-		case url := <-host.urlChan:
-			host.streamChan <- host.findStream(url)
-		default:
-			time.Sleep(time.Millisecond * 30)
-		}
-
-	}
-}
-
 func (host *AvHost) Mux() *http.ServeMux { return host.mux }
 
 func (host *AvHost) Quit() {
@@ -187,7 +196,7 @@ func (host *AvHost) Quit() {
 	host.cmdChan <- AV_QUIT
 }
 
-func (host *AvHost) scanLocal() {
+func (host *AvHost) scanLocal() (update_count int) {
 	devices := v4l.FindDevices()
 	for _, info := range devices {
 		if !info.Camera {
@@ -220,7 +229,7 @@ func (host *AvHost) scanLocal() {
 		err := localcam.Open(config)
 		if err != nil {
 			log.Print("ScanLocal ", err)
-			return
+			continue
 		}
 		// avStream = NewAvStream(len(host.Streams), config, localcam)
 		if avStream == nil {
@@ -229,46 +238,55 @@ func (host *AvHost) scanLocal() {
 			host.updateStream(avStream, localcam, &localcam.videoConfig)
 		}
 
+		// add to revision counter
+		update_count++
 	}
+
+	return
+}
+
+func (host *AvHost) scanRemote(addr string) {
+	remote, err := host.fetchRemote(addr)
+	if err != nil {
+		log.Printf("Fetching remote %s. %s", addr, err)
+		return
+	}
+	// log.Printf("Fetched remote %s. %v", addr, remote)
+
+	for _, stream := range remote.Streamers {
+		streamAddr := addr + stream.Url
+		avStream := host.findAvStreamPath(streamAddr)
+		if avStream != nil {
+			if avStream.Source.IsOpened() {
+				continue
+			}
+			log.Printf("found remote %v, %v", avStream.Url, addr)
+		} else {
+			avStream = host.findAvStreamClosed()
+			if avStream != nil {
+				log.Printf("found remote closed %v, %v", avStream.Url, addr)
+			}
+		}
+
+		remotecam := NewRemoteCam(streamAddr)
+		err := remotecam.Open(&stream.Config)
+		if err != nil {
+			log.Print("ScanRemotes ", err)
+			return
+		}
+		if avStream == nil {
+			host.addStream(remotecam, &stream.Config, nil, host.streamListener)
+		} else {
+			host.updateStream(avStream, remotecam, &stream.Config)
+		}
+	}
+
 }
 
 func (host *AvHost) scanRemotes() {
 	// log.Print("REMOTES ", host.Remotes)
 	for _, addr := range host.Remotes {
-		remote, err := host.fetchRemote(addr)
-		if err != nil {
-			log.Printf("Fetching remote %s. %s", addr, err)
-			continue
-		}
-		// log.Printf("Fetched remote %s. %v", addr, remote)
-
-		for _, stream := range remote.Streamers {
-			streamAddr := addr + stream.Url
-			avStream := host.findAvStreamPath(streamAddr)
-			if avStream != nil {
-				if avStream.Source.IsOpened() {
-					continue
-				}
-				log.Printf("found remote %v, %v", avStream.Url, addr)
-			} else {
-				avStream = host.findAvStreamClosed()
-				if avStream != nil {
-					log.Printf("found remote closed %v, %v", avStream.Url, addr)
-				}
-			}
-
-			remotecam := NewRemoteCam(streamAddr)
-			err := remotecam.Open(&stream.Config)
-			if err != nil {
-				log.Print("ScanRemotes ", err)
-				return
-			}
-			if avStream == nil {
-				host.addStream(remotecam, &stream.Config, nil, host.streamListener)
-			} else {
-				host.updateStream(avStream, remotecam, &stream.Config)
-			}
-		}
+		host.scanRemote(addr)
 	}
 }
 

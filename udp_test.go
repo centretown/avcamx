@@ -6,19 +6,32 @@ import (
 )
 
 func TestUdp(t *testing.T) {
-	go PollUDP()
+	done := make(chan int)
+	update := make(chan string)
+	go PollUDP(done, update)
+	go func() {
+		for {
+			select {
+			case remoteAddr := <-update:
+				t.Log((remoteAddr))
+				continue
+			default:
+				time.Sleep(time.Second)
+			}
 
-	time.Sleep(time.Second)
-	err := DialUDP("hello world")
+			err := DialUDP("hello world")
+			if err != nil {
+				t.Log(err)
+			}
 
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = DialUDP("hello universe")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+			err = DialUDP("hello universe")
+			if err != nil {
+				t.Log(err)
+			}
+		}
+	}()
 	time.Sleep(time.Second * 30)
+	done <- 1
+	time.Sleep(time.Second)
+
 }

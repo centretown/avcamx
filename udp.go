@@ -1,9 +1,9 @@
 package avcamx
 
 import (
-	"fmt"
 	"log"
 	"net"
+	"time"
 )
 
 const UDPPort = ":9010"
@@ -36,29 +36,51 @@ func DialUDP(msg string) (err error) {
 	return
 }
 
-func PollUDP() {
+func PollUDP(done chan int, updateAddr chan string) error {
+
+	var err error
+	localAddr := GetOutboundIP()
 	udpAddr, err := net.ResolveUDPAddr("udp4", UDPAddress())
 	if err != nil {
-		log.Printf("%v", err)
+		log.Println("ResolveUDPAddr: ", err)
+		return err
 	}
 	// Start listening for UDP packages on the given address
 	conn, err := net.ListenUDP("udp4", udpAddr)
 	if err != nil {
-		log.Println(err)
-		return
+		log.Println("ListenUDP: ", err)
+		return err
 	}
+
+	var (
+		buf  [1024]byte
+		addr *net.UDPAddr
+	)
 
 	for {
-		var buf [512]byte
-		_, addr, err := conn.ReadFromUDP(buf[0:])
-		if err != nil {
-			fmt.Println(err)
-			return
+		select {
+		case <-done:
+			break
+		default:
+			time.Sleep(time.Second)
 		}
 
-		log.Print("> ", string(buf[0:]), addr.IP)
+		_, addr, err = conn.ReadFromUDP(buf[0:])
+		if err != nil {
+			log.Println("ReadFromUDP: ", err)
+			continue
+		}
 
-		// Write back the message over UPD
-		conn.WriteToUDP([]byte("Hello UDP Client\n"), addr)
+		remoteAddr := addr.IP.String()
+		if remoteAddr == localAddr {
+			continue
+		}
+
+		log.Print("> ", string(buf[0:]), remoteAddr)
+		updateAddr <- remoteAddr
+		// // Write back the message over UPD
+		// conn.WriteToUDP([]byte("Hello UDP Client\n"), addr)
 	}
+
+	return nil
 }
