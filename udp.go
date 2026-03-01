@@ -76,10 +76,9 @@ func PollUDP(done chan int, updateAddr chan string) error {
 			continue
 		}
 
-		log.Print("> ", string(buf[0:]), remoteAddr)
+		log.Printf("PollUDP: %s, %s", string(buf[0:]), remoteAddr)
+		// signal monitor
 		updateAddr <- remoteAddr
-		// // Write back the message over UPD
-		// conn.WriteToUDP([]byte("Hello UDP Client\n"), addr)
 	}
 
 	// return nil

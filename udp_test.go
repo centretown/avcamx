@@ -18,16 +18,6 @@ func TestUdp(t *testing.T) {
 			default:
 				time.Sleep(time.Second)
 			}
-
-			err := DialUDP("hello world")
-			if err != nil {
-				t.Log(err)
-			}
-
-			err = DialUDP("hello universe")
-			if err != nil {
-				t.Log(err)
-			}
 		}
 	}()
 	time.Sleep(time.Second * 30)

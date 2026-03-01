@@ -1,6 +1,8 @@
 {
-  "HostAddr": "192.168.10.7",
+  "HostAddr": "192.168.10.188",
   "HostPort": "9000",
   "Remotes": [],
-  "OutputBase": "/mnt/molly/output"
+  "OutputBase": "/mnt/molly/output",
+  "Update": false,
+  "Recorders": 0
 }

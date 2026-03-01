@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -113,7 +114,16 @@ func (host *AvHost) Monitor() {
 		now         time.Time
 		done        = make(chan int)
 		update      = make(chan string)
+		err         error
+		conn        net.Conn
 	)
+
+	conn, err = net.Dial("udp4", UDPAddress())
+	if err != nil {
+		log.Printf("DialUDP %v", err)
+		return
+	}
+	defer conn.Close()
 
 	host.scanRemotes()
 	go PollUDP(done, update)
@@ -125,7 +135,7 @@ func (host *AvHost) Monitor() {
 			localScan = now.Add(localPeriod)
 			update_count := host.scanLocal()
 			if update_count > 0 {
-				err := DialUDP("update")
+				_, err = conn.Write([]byte("update"))
 				if err != nil {
 					log.Printf("Monitor:DialUDP: %v", err)
 					continue
@@ -135,7 +145,6 @@ func (host *AvHost) Monitor() {
 
 		select {
 		case remoteAddr := <-update:
-			log.Print(remoteAddr)
 			host.scanRemote(remoteAddr)
 		case cmd := <-host.cmdChan:
 			switch cmd {
@@ -245,7 +254,20 @@ func (host *AvHost) scanLocal() (update_count int) {
 	return
 }
 
+const (
+	HTTP_PREFIX = "http://"
+	PORT_NUMBER = ":9000"
+)
+
 func (host *AvHost) scanRemote(addr string) {
+	// host.scanRemote("http://" + remoteAddr + ":9000")
+	if !strings.HasPrefix(addr, HTTP_PREFIX) {
+		addr = HTTP_PREFIX + addr
+	}
+	if !strings.HasSuffix(addr, PORT_NUMBER) {
+		addr += PORT_NUMBER
+	}
+
 	remote, err := host.fetchRemote(addr)
 	if err != nil {
 		log.Printf("Fetching remote %s. %s", addr, err)
