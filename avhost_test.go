@@ -7,7 +7,7 @@ import (
 
 func TestScan(t *testing.T) {
 
-	host := NewAvHost("", "", []string{}, 1000, nil)
+	host := NewAvHost("", "", []string{}, 0, nil)
 	// time.Sleep(time.Second)
 
 	// for range 60 {

@@ -25,7 +25,7 @@ func (sa *stringArray) Set(value string) error {
 
 type AvFlags struct {
 	HostAddr   string
-	HostPort   string
+	Connect    string
 	Remotes    []string
 	OutputBase string
 	Update     bool
@@ -39,51 +39,53 @@ func NewAvFlags() (avFlags *AvFlags) {
 }
 
 const (
-	ConfigName = "avcamx.json"
+	ConfigName       = "avcamx.json"
+	CONNECT_NONE     = "none"
+	CONNECT_ALL      = "all"
+	CONNECT_RESTRICT = "restrict"
 )
 
 var (
 	avDefaultFlags = AvFlags{
+		Connect:    CONNECT_NONE,
 		Remotes:    make([]string, 0),
 		HostAddr:   GetOutboundIP(),
-		HostPort:   "9000",
 		OutputBase: "/mnt/molly/output",
 		Update:     false,
 		Recorders:  0,
 	}
 
 	remoteAddrUsage = "remote host ip address (more than one)"
+	connectUsage    = "remote connections (none,all,restrict)"
 	hostAddrUsage   = "host ip address"
-	hostPortUsage   = "host ip port number"
 	outputBaseUsage = "recording directory path"
 	updateUsage     = "update default values"
 )
 
 func (avFlags *AvFlags) Print() {
-	flag.VisitAll(func(f *flag.Flag) {
-		fmt.Printf("%v: %v\n", f.Usage, f.Value)
-	})
-
-	// fmt.Printf("Host: %s:%s\n", avFlags.HostAddr, avFlags.HostPort)
-	// fmt.Printf("Remotes:\n")
-	// for _, adr := range avFlags.Remotes {
-	// 	fmt.Printf("- %s\n", adr)
-	// }
-	// fmt.Printf("MP3 output to: %s\n", avFlags.OutputBase)
-	// fmt.Printf("Update default values: %v\n", avFlags.Update)
+	fmt.Printf("Host: %s\n", avFlags.HostAddr)
+	fmt.Printf("Remote Connections: %s\n", avFlags.Connect)
+	fmt.Printf("Remotes:\n")
+	for _, adr := range avFlags.Remotes {
+		fmt.Printf("- %s\n", adr)
+	}
+	fmt.Printf("MP3 output to: %s\n", avFlags.OutputBase)
+	fmt.Printf("Number of recorders supported:: %d\n", avFlags.Recorders)
+	fmt.Printf("Update default values: %v\n", avFlags.Update)
 }
 
 func (avFlags *AvFlags) Parse() {
-	flag.Var((*stringArray)(&avFlags.Remotes), "remote", remoteAddrUsage)
-	flag.Var((*stringArray)(&avFlags.Remotes), "r", remoteAddrUsage)
-	flag.StringVar(&avFlags.HostAddr, "addr", avDefaultFlags.HostAddr, hostAddrUsage)
+	flag.StringVar(&avFlags.HostAddr, "address", avDefaultFlags.HostAddr, hostAddrUsage)
 	flag.StringVar(&avFlags.HostAddr, "a", avDefaultFlags.HostAddr, hostAddrUsage)
-	flag.StringVar(&avFlags.HostPort, "port", avDefaultFlags.HostPort, hostPortUsage)
-	flag.StringVar(&avFlags.HostPort, "p", avDefaultFlags.HostPort, hostPortUsage)
+	flag.StringVar(&avFlags.HostAddr, "connect", avDefaultFlags.Connect, connectUsage)
+	flag.StringVar(&avFlags.HostAddr, "c", avDefaultFlags.Connect, connectUsage)
 	flag.StringVar(&avFlags.OutputBase, "output", avDefaultFlags.OutputBase, outputBaseUsage)
 	flag.StringVar(&avFlags.OutputBase, "o", avDefaultFlags.OutputBase, outputBaseUsage)
 	flag.BoolVar(&avFlags.Update, "update", avDefaultFlags.Update, updateUsage)
 	flag.BoolVar(&avFlags.Update, "u", avDefaultFlags.Update, updateUsage)
+
+	flag.Var((*stringArray)(&avFlags.Remotes), "remote", remoteAddrUsage)
+	flag.Var((*stringArray)(&avFlags.Remotes), "r", remoteAddrUsage)
 
 	flag.Parse()
 

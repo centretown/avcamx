@@ -16,18 +16,10 @@ func main() {
 	}
 
 	avFlags.Parse()
-	err := avFlags.Save()
-	if err != nil {
-		log.Printf("Error saving configuration file %s. %s", avcamx.ConfigName, err)
-	} else if exists {
-		log.Print("Saved configuration file. ", avcamx.ConfigName)
-	} else {
-		log.Print("Created configuration file. ", avcamx.ConfigName)
-	}
 
 	avFlags.Print()
 
-	host := avcamx.NewAvHost(avFlags.HostAddr, avFlags.HostPort, avFlags.Remotes, 1000, nil)
+	host := avcamx.NewAvHost(avFlags.HostAddr, avFlags.Connect, avFlags.Remotes, 1000, nil)
 
 	log.Printf("\nServing %s...", host.Url)
 

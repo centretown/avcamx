@@ -3,7 +3,6 @@ package avcamx
 import (
 	"log"
 	"net"
-	"time"
 )
 
 const UDPPort = ":9010"
@@ -34,52 +33,4 @@ func DialUDP(msg string) (err error) {
 
 	_, err = conn.Write([]byte(msg))
 	return
-}
-
-func PollUDP(done chan int, updateAddr chan string) error {
-
-	var err error
-	localAddr := GetOutboundIP()
-	udpAddr, err := net.ResolveUDPAddr("udp4", UDPAddress())
-	if err != nil {
-		log.Println("ResolveUDPAddr: ", err)
-		return err
-	}
-	// Start listening for UDP packages on the given address
-	conn, err := net.ListenUDP("udp4", udpAddr)
-	if err != nil {
-		log.Println("ListenUDP: ", err)
-		return err
-	}
-
-	var (
-		buf  [1024]byte
-		addr *net.UDPAddr
-	)
-
-	for {
-		select {
-		case <-done:
-			return nil
-		default:
-			time.Sleep(time.Second)
-		}
-
-		_, addr, err = conn.ReadFromUDP(buf[0:])
-		if err != nil {
-			log.Println("ReadFromUDP: ", err)
-			continue
-		}
-
-		remoteAddr := addr.IP.String()
-		if remoteAddr == localAddr {
-			continue
-		}
-
-		log.Printf("PollUDP: %s, %s", string(buf[0:]), remoteAddr)
-		// signal monitor
-		updateAddr <- remoteAddr
-	}
-
-	// return nil
 }

@@ -8,7 +8,8 @@ import (
 func TestUdp(t *testing.T) {
 	done := make(chan int)
 	update := make(chan string)
-	go PollUDP(done, update)
+	host := NewAvHost("", "all", []string{}, 0, nil)
+	go host.PollUDP(done, update)
 	go func() {
 		for {
 			select {

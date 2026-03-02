@@ -13,11 +13,20 @@ import (
 	"github.com/korandiz/v4l"
 )
 
+type RemoteAccess int
+
+const (
+	REMOTE_NONE RemoteAccess = iota
+	REMOTE_ALL
+	REMOTE_RESTRICT
+)
+
 type AvHost struct {
 	Url            string
 	Streamers      []*AvStream
+	RemoteAccess   RemoteAccess
 	Remotes        []string
-	Interval       int
+	Recorders      int
 	Server         *http.Server       `json:"-"`
 	streamListener StreamListener     `json:"-"`
 	tmpl           *template.Template `json:"-"`
@@ -34,11 +43,12 @@ const (
 	AV_URL
 )
 
-func NewAvHost(address string, port string, remotes []string, interval int, streamListener StreamListener) (host *AvHost) {
+func NewAvHost(hostAddr string, remoteAccess string, remotes []string, recorders int, streamListener StreamListener) (host *AvHost) {
 	host = &AvHost{
 		Streamers:      make([]*AvStream, 0),
+		RemoteAccess:   REMOTE_NONE,
 		Remotes:        remotes,
-		Interval:       interval,
+		Recorders:      recorders,
 		streamListener: streamListener,
 		mux:            &http.ServeMux{},
 		cmdChan:        make(chan int),
@@ -46,15 +56,22 @@ func NewAvHost(address string, port string, remotes []string, interval int, stre
 		urlChan:        make(chan string),
 		streamChan:     make(chan *AvStream),
 	}
-	if len(port) == 0 {
-		port = "8080"
-	}
 
+	address := hostAddr
 	if len(address) == 0 {
 		address = GetOutboundIP()
 	}
 
-	host.Url = address + ":" + port
+	switch remoteAccess {
+	case CONNECT_ALL:
+		host.RemoteAccess = REMOTE_ALL
+	case CONNECT_RESTRICT:
+		host.RemoteAccess = REMOTE_RESTRICT
+	default:
+		host.RemoteAccess = REMOTE_NONE
+	}
+
+	host.Url = address + ":9000"
 	host.Server = &http.Server{
 		Addr:    host.Url,
 		Handler: host.mux,
@@ -67,10 +84,11 @@ func NewAvHost(address string, port string, remotes []string, interval int, stre
 
 	host.mux.HandleFunc("/host", func(w http.ResponseWriter, r *http.Request) {
 		copy := &AvHost{
-			Url:       host.Url,
-			Streamers: host.Streams(),
-			Remotes:   host.Remotes,
-			Interval:  host.Interval,
+			Url:          host.Url,
+			Streamers:    host.Streams(),
+			Remotes:      host.Remotes,
+			RemoteAccess: host.RemoteAccess,
+			Recorders:    host.Recorders,
 		}
 		buf, err := json.Marshal(copy)
 		if err != nil {
@@ -112,8 +130,6 @@ func (host *AvHost) Monitor() {
 		localPeriod = time.Second * 5
 		localScan   = time.Now()
 		now         time.Time
-		UDPDone     = make(chan int)
-		UDPUpdate   = make(chan string)
 		err         error
 		conn        net.Conn
 	)
@@ -125,8 +141,17 @@ func (host *AvHost) Monitor() {
 	}
 	defer conn.Close()
 
-	host.scanRemotes()
-	go PollUDP(UDPDone, UDPUpdate)
+	var (
+		UDPDone   chan int
+		UDPUpdate chan string
+	)
+
+	if host.RemoteAccess != REMOTE_NONE {
+		UDPDone = make(chan int)
+		UDPUpdate = make(chan string)
+		host.scanRemotes()
+		go host.PollUDP(UDPDone, UDPUpdate)
+	}
 
 	for {
 
@@ -143,24 +168,40 @@ func (host *AvHost) Monitor() {
 			}
 		}
 
-		select {
-		case remoteAddr := <-UDPUpdate:
-			host.scanRemote(remoteAddr)
-		case cmd := <-host.cmdChan:
-			switch cmd {
-			case AV_QUIT:
-				UDPDone <- 1
-				log.Print("AvHost Monitor Done")
-				return
-			case AV_STREAMS:
-				host.streamsChan <- host.copyStreams()
+		if host.RemoteAccess != REMOTE_NONE {
+			select {
+			case remoteAddr := <-UDPUpdate:
+				host.scanRemote(remoteAddr)
+			case cmd := <-host.cmdChan:
+				switch cmd {
+				case AV_QUIT:
+					UDPDone <- 1
+					log.Print("AvHost Monitor Done")
+					return
+				case AV_STREAMS:
+					host.streamsChan <- host.copyStreams()
+				}
+			case url := <-host.urlChan:
+				host.streamChan <- host.findStream(url)
+			default:
+				time.Sleep(time.Millisecond * 100)
 			}
-		case url := <-host.urlChan:
-			host.streamChan <- host.findStream(url)
-		default:
-			time.Sleep(time.Millisecond * 100)
+		} else {
+			select {
+			case cmd := <-host.cmdChan:
+				switch cmd {
+				case AV_QUIT:
+					log.Print("AvHost Monitor Done")
+					return
+				case AV_STREAMS:
+					host.streamsChan <- host.copyStreams()
+				}
+			case url := <-host.urlChan:
+				host.streamChan <- host.findStream(url)
+			default:
+				time.Sleep(time.Millisecond * 100)
+			}
 		}
-
 	}
 }
 
@@ -449,4 +490,64 @@ func (host *AvHost) fetchRemote(remoteAddr string) (remote *AvHost, err error) {
 		return
 	}
 	return
+}
+
+func (host *AvHost) PollUDP(done chan int, updateAddr chan string) error {
+
+	var err error
+	localAddr := GetOutboundIP()
+	udpAddr, err := net.ResolveUDPAddr("udp4", UDPAddress())
+	if err != nil {
+		log.Println("ResolveUDPAddr: ", err)
+		return err
+	}
+	// Start listening for UDP packages on the given address
+	conn, err := net.ListenUDP("udp4", udpAddr)
+	if err != nil {
+		log.Println("ListenUDP: ", err)
+		return err
+	}
+
+	var (
+		buf  [1024]byte
+		addr *net.UDPAddr
+	)
+
+	for {
+		select {
+		case <-done:
+			return nil
+		default:
+			time.Sleep(time.Second)
+		}
+
+		_, addr, err = conn.ReadFromUDP(buf[0:])
+		if err != nil {
+			log.Println("ReadFromUDP: ", err)
+			continue
+		}
+
+		remoteAddr := addr.IP.String()
+		if remoteAddr == localAddr {
+			continue
+		}
+
+		log.Printf("PollUDP: %s, %s", string(buf[0:]), remoteAddr)
+		if host.RemoteAccess == REMOTE_RESTRICT {
+			found := false
+			for _, s := range host.Remotes {
+				if strings.Contains(s, remoteAddr) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
+		}
+		// signal monitor
+		updateAddr <- remoteAddr
+	}
+
+	// return nil
 }
