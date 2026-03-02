@@ -21,6 +21,11 @@ func main() {
 
 	host := avcamx.NewAvHost(avFlags.HostAddr, avFlags.Connect, avFlags.Remotes, 1000, nil)
 
+	err := host.Run()
+	if err != nil {
+		log.Fatalf("\nError Serving %s: %v", host.Url, err)
+	}
+
 	log.Printf("\nServing %s...", host.Url)
 
 	sigs := make(chan os.Signal, 1)

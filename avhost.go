@@ -76,10 +76,15 @@ func NewAvHost(hostAddr string, remoteAccess string, remotes []string, recorders
 		Addr:    host.Url,
 		Handler: host.mux,
 	}
-	var err error
+	return
+}
+
+func (host *AvHost) Run() (err error) {
+	// var err error
 	host.tmpl, err = template.New("response").Parse(`<div id="response-div" class="fade-it">{{.}}</div>`)
 	if err != nil {
 		log.Printf("NewAvHost Parse Template: %v", err)
+		return
 	}
 
 	host.mux.HandleFunc("/host", func(w http.ResponseWriter, r *http.Request) {
@@ -158,7 +163,7 @@ func (host *AvHost) Monitor() {
 		now = time.Now()
 		if localScan.Compare(now) <= 0 {
 			localScan = now.Add(localPeriod)
-			update_count := host.scanLocal()
+			update_count := host.ScanLocal()
 			if update_count > 0 {
 				_, err = conn.Write([]byte("update"))
 				if err != nil {
@@ -171,7 +176,7 @@ func (host *AvHost) Monitor() {
 		if host.RemoteAccess != REMOTE_NONE {
 			select {
 			case remoteAddr := <-UDPUpdate:
-				host.scanRemote(remoteAddr)
+				host.ScanRemote(remoteAddr)
 			case cmd := <-host.cmdChan:
 				switch cmd {
 				case AV_QUIT:
@@ -247,7 +252,7 @@ func (host *AvHost) Quit() {
 	host.cmdChan <- AV_QUIT
 }
 
-func (host *AvHost) scanLocal() (update_count int) {
+func (host *AvHost) ScanLocal() (update_count int) {
 	devices := v4l.FindDevices()
 	for _, info := range devices {
 		if !info.Camera {
@@ -301,7 +306,7 @@ const (
 	PORT_NUMBER = ":9000"
 )
 
-func (host *AvHost) scanRemote(addr string) {
+func (host *AvHost) ScanRemote(addr string) {
 	// host.scanRemote("http://" + remoteAddr + ":9000")
 	if !strings.HasPrefix(addr, HTTP_PREFIX) {
 		addr = HTTP_PREFIX + addr
@@ -350,7 +355,7 @@ func (host *AvHost) scanRemote(addr string) {
 func (host *AvHost) scanRemotes() {
 	// log.Print("REMOTES ", host.Remotes)
 	for _, addr := range host.Remotes {
-		host.scanRemote(addr)
+		host.ScanRemote(addr)
 	}
 }
 
@@ -523,7 +528,7 @@ func (host *AvHost) PollUDP(done chan int, updateAddr chan string) error {
 
 		_, addr, err = conn.ReadFromUDP(buf[0:])
 		if err != nil {
-			log.Println("ReadFromUDP: ", err)
+			log.Println("PollUDP-ReadFromUDP: ", err)
 			continue
 		}
 
@@ -532,7 +537,7 @@ func (host *AvHost) PollUDP(done chan int, updateAddr chan string) error {
 			continue
 		}
 
-		log.Printf("PollUDP: %s, %s", string(buf[0:]), remoteAddr)
+		log.Printf("PollUDP found: %s, %s", string(buf[0:]), remoteAddr)
 		if host.RemoteAccess == REMOTE_RESTRICT {
 			found := false
 			for _, s := range host.Remotes {
