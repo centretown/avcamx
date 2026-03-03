@@ -3,58 +3,108 @@ package avcamx
 import (
 	"fmt"
 	"log"
+
+	"github.com/korandiz/v4l"
 )
 
 type AvStream struct {
-	ID     int
-	Url    string
-	Config VideoConfig
-	Source VideoSource `json:"-"`
-	Server *AvServer   `json:"-"`
+	ID         int
+	Url        string
+	DeviceName string
+	Config     VideoConfig
+	Configs    []v4l.DeviceConfig
+	Controls   []v4l.ControlInfo
+	Source     VideoSource `json:"-"`
+	Server     *AvServer   `json:"-"`
 }
 
-func NewAvStream(id int, config *VideoConfig, source VideoSource) (item *AvStream) {
-	item = &AvStream{
-		ID:     id,
-		Url:    fmt.Sprintf("/video%d", id),
-		Config: *config,
-		Source: source,
+func NewAvStream(id int, config *VideoConfig, source VideoSource) (stream *AvStream) {
+	stream = &AvStream{
+		ID:       id,
+		Url:      fmt.Sprintf("/video%d", id),
+		Config:   *config,
+		Source:   source,
+		Configs:  make([]v4l.DeviceConfig, 0),
+		Controls: make([]v4l.ControlInfo, 0),
 	}
+	stream.copyConfigs()
 	return
 }
 
-func (item *AvStream) IsOpened() bool {
-	if item.Source == nil {
-		return false
+func (stream *AvStream) copyConfigs() {
+	if local, ok := stream.Source.(*LocalCam); ok {
+		info, err := local.DeviceInfo()
+		if err == nil {
+			stream.DeviceName = info.DeviceName
+		} else {
+			log.Println(err)
+		}
+
+		configs, err := local.device.ListConfigs()
+		if err == nil {
+			stream.Configs = make([]v4l.DeviceConfig, len(configs))
+			copy(stream.Configs, configs)
+		} else {
+			log.Println(err)
+		}
+		controls, err := local.device.ListControls()
+		if err == nil {
+			stream.Controls = make([]v4l.ControlInfo, len(controls))
+			copy(stream.Controls, controls)
+		} else {
+			log.Println(err)
+		}
 	}
-	return item.Source.IsOpened()
 }
 
-func (item *AvStream) IsRecording() bool {
-	if item.Server == nil {
-		return false
+func (stream *AvStream) copyStream() (s *AvStream) {
+	s = &AvStream{
+		ID:         stream.ID,
+		Url:        stream.Url,
+		Config:     stream.Config,
+		Source:     stream.Source,
+		Server:     stream.Server,
+		DeviceName: stream.DeviceName,
+		Configs:    make([]v4l.DeviceConfig, len(stream.Configs)),
+		Controls:   make([]v4l.ControlInfo, len(stream.Controls)),
 	}
-	return item.Server.Recording
+	copy(s.Configs, stream.Configs)
+	copy(s.Controls, stream.Controls)
+	return
 }
 
-func (item *AvStream) RecordCmd(seconds int) {
-	if item.Server == nil {
+func (stream *AvStream) IsOpened() bool {
+	if stream.Source == nil {
+		return false
+	}
+	return stream.Source.IsOpened()
+}
+
+func (stream *AvStream) IsRecording() bool {
+	if stream.Server == nil {
+		return false
+	}
+	return stream.Server.Recording
+}
+
+func (stream *AvStream) RecordCmd(seconds int) {
+	if stream.Server == nil {
 		log.Print("RecordCmd No server")
 		return
 	}
-	item.Server.RecordCmd(seconds)
+	stream.Server.RecordCmd(seconds)
 }
 
-func (item *AvStream) StopRecordCmd() {
-	if item.Server == nil {
+func (stream *AvStream) StopRecordCmd() {
+	if stream.Server == nil {
 		log.Print("StopRecordCmd No server")
 		return
 	}
-	item.Server.StopRecordCmd()
+	stream.Server.StopRecordCmd()
 }
 
-func (item *AvStream) SetRecordListener(streamListener StreamListener) {
-	if item.Server != nil {
-		item.Server.Listener = streamListener
+func (stream *AvStream) SetRecordListener(streamListener StreamListener) {
+	if stream.Server != nil {
+		stream.Server.Listener = streamListener
 	}
 }

@@ -21,6 +21,17 @@ const (
 	REMOTE_RESTRICT
 )
 
+const (
+	AV_QUIT int = iota + 1
+	AV_STREAMS
+	AV_URL
+)
+
+const (
+	HTTP_PREFIX = "http://"
+	HTTP_PORT   = ":9000"
+)
+
 type AvHost struct {
 	Url            string
 	Streamers      []*AvStream
@@ -36,12 +47,6 @@ type AvHost struct {
 	urlChan        chan string        `json:"-"`
 	streamChan     chan *AvStream     `json:"-"`
 }
-
-const (
-	AV_QUIT int = iota + 1
-	AV_STREAMS
-	AV_URL
-)
 
 func NewAvHost(hostAddr string, remoteAccess string, remotes []string, recorders int, streamListener StreamListener) (host *AvHost) {
 	host = &AvHost{
@@ -213,13 +218,7 @@ func (host *AvHost) Monitor() {
 func (host *AvHost) findStream(url string) *AvStream {
 	for _, s := range host.Streamers {
 		if s.Url == url {
-			return &AvStream{
-				ID:     s.ID,
-				Url:    s.Url,
-				Config: s.Config,
-				Source: s.Source,
-				Server: s.Server,
-			}
+			return s.copyStream()
 		}
 	}
 	return nil
@@ -227,15 +226,8 @@ func (host *AvHost) findStream(url string) *AvStream {
 
 func (host *AvHost) copyStreams() (streams []*AvStream) {
 	streams = make([]*AvStream, len(host.Streamers))
-	for i, stream := range host.Streamers {
-		copy := &AvStream{
-			ID:     stream.ID,
-			Url:    stream.Url,
-			Config: stream.Config,
-			Source: stream.Source,
-			Server: stream.Server,
-		}
-		streams[i] = copy
+	for i, s := range host.Streamers {
+		streams[i] = s.copyStream()
 	}
 	return
 }
@@ -301,18 +293,13 @@ func (host *AvHost) ScanLocal() (update_count int) {
 	return
 }
 
-const (
-	HTTP_PREFIX = "http://"
-	PORT_NUMBER = ":9000"
-)
-
 func (host *AvHost) ScanRemote(addr string) {
 	// host.scanRemote("http://" + remoteAddr + ":9000")
 	if !strings.HasPrefix(addr, HTTP_PREFIX) {
 		addr = HTTP_PREFIX + addr
 	}
-	if !strings.HasSuffix(addr, PORT_NUMBER) {
-		addr += PORT_NUMBER
+	if !strings.HasSuffix(addr, HTTP_PORT) {
+		addr += HTTP_PORT
 	}
 
 	remote, err := host.fetchRemote(addr)
@@ -363,6 +350,8 @@ func (host *AvHost) updateStream(avStream *AvStream,
 	source VideoSource, config *VideoConfig) {
 	avStream.Source = source
 	avStream.Config = *config
+	avStream.copyConfigs()
+
 	if avStream.Server == nil {
 		log.Fatal("avStream.Server==nil")
 	}

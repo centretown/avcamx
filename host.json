@@ -1,0 +1,464 @@
+{
+  "Url": "192.168.10.188:9000",
+  "Streamers": [
+    {
+      "ID": 0,
+      "Url": "/video0",
+      "DeviceName": "HD Webcam eMeet C960: HD Webcam",
+      "Config": {
+        "Path": "/dev/video0",
+        "Driver": "uvcvideo",
+        "Codec": "MJPG",
+        "Width": 1920,
+        "Height": 1080,
+        "FPS": 30
+      },
+      "Configs": [
+        {
+          "Format": 1196444237,
+          "Width": 1920,
+          "Height": 1080,
+          "FPS": { "N": 30, "D": 1 }
+        },
+        {
+          "Format": 1196444237,
+          "Width": 1280,
+          "Height": 960,
+          "FPS": { "N": 30, "D": 1 }
+        },
+        {
+          "Format": 1196444237,
+          "Width": 1280,
+          "Height": 720,
+          "FPS": { "N": 30, "D": 1 }
+        },
+        {
+          "Format": 1196444237,
+          "Width": 1024,
+          "Height": 576,
+          "FPS": { "N": 30, "D": 1 }
+        },
+        {
+          "Format": 1196444237,
+          "Width": 800,
+          "Height": 600,
+          "FPS": { "N": 30, "D": 1 }
+        },
+        {
+          "Format": 1196444237,
+          "Width": 640,
+          "Height": 480,
+          "FPS": { "N": 30, "D": 1 }
+        },
+        {
+          "Format": 1196444237,
+          "Width": 640,
+          "Height": 360,
+          "FPS": { "N": 30, "D": 1 }
+        },
+        {
+          "Format": 1448695129,
+          "Width": 640,
+          "Height": 480,
+          "FPS": { "N": 30, "D": 1 }
+        },
+        {
+          "Format": 1448695129,
+          "Width": 640,
+          "Height": 360,
+          "FPS": { "N": 30, "D": 1 }
+        }
+      ],
+      "Controls": [
+        {
+          "CID": 9963776,
+          "Name": "Brightness",
+          "Type": "int",
+          "Min": -64,
+          "Max": 64,
+          "Step": 1,
+          "Default": 0,
+          "Options": null
+        },
+        {
+          "CID": 9963777,
+          "Name": "Contrast",
+          "Type": "int",
+          "Min": 0,
+          "Max": 64,
+          "Step": 1,
+          "Default": 32,
+          "Options": null
+        },
+        {
+          "CID": 9963778,
+          "Name": "Saturation",
+          "Type": "int",
+          "Min": 0,
+          "Max": 128,
+          "Step": 1,
+          "Default": 65,
+          "Options": null
+        },
+        {
+          "CID": 9963779,
+          "Name": "Hue",
+          "Type": "int",
+          "Min": -40,
+          "Max": 40,
+          "Step": 1,
+          "Default": 0,
+          "Options": null
+        },
+        {
+          "CID": 9963788,
+          "Name": "White Balance, Automatic",
+          "Type": "bool",
+          "Min": 0,
+          "Max": 1,
+          "Step": 1,
+          "Default": 1,
+          "Options": null
+        },
+        {
+          "CID": 9963792,
+          "Name": "Gamma",
+          "Type": "int",
+          "Min": 72,
+          "Max": 500,
+          "Step": 1,
+          "Default": 100,
+          "Options": null
+        },
+        {
+          "CID": 9963795,
+          "Name": "Gain",
+          "Type": "int",
+          "Min": 0,
+          "Max": 100,
+          "Step": 1,
+          "Default": 0,
+          "Options": null
+        },
+        {
+          "CID": 9963800,
+          "Name": "Power Line Frequency",
+          "Type": "enum",
+          "Min": 0,
+          "Max": 2,
+          "Step": 1,
+          "Default": 2,
+          "Options": [
+            { "Value": 0, "Name": "Disabled", "Int64": 0 },
+            { "Value": 1, "Name": "50 Hz", "Int64": 0 },
+            { "Value": 2, "Name": "60 Hz", "Int64": 0 }
+          ]
+        },
+        {
+          "CID": 9963802,
+          "Name": "White Balance Temperature",
+          "Type": "int",
+          "Min": 2800,
+          "Max": 6500,
+          "Step": 1,
+          "Default": 4600,
+          "Options": null
+        },
+        {
+          "CID": 9963803,
+          "Name": "Sharpness",
+          "Type": "int",
+          "Min": 0,
+          "Max": 6,
+          "Step": 1,
+          "Default": 3,
+          "Options": null
+        },
+        {
+          "CID": 9963804,
+          "Name": "Backlight Compensation",
+          "Type": "int",
+          "Min": 0,
+          "Max": 160,
+          "Step": 1,
+          "Default": 30,
+          "Options": null
+        },
+        {
+          "CID": 10094849,
+          "Name": "Auto Exposure",
+          "Type": "enum",
+          "Min": 0,
+          "Max": 3,
+          "Step": 1,
+          "Default": 3,
+          "Options": [
+            { "Value": 1, "Name": "Manual Mode", "Int64": 0 },
+            { "Value": 3, "Name": "Aperture Priority Mode", "Int64": 0 }
+          ]
+        },
+        {
+          "CID": 10094850,
+          "Name": "Exposure Time, Absolute",
+          "Type": "int",
+          "Min": 1,
+          "Max": 5000,
+          "Step": 1,
+          "Default": 157,
+          "Options": null
+        },
+        {
+          "CID": 10094851,
+          "Name": "Exposure, Dynamic Framerate",
+          "Type": "bool",
+          "Min": 0,
+          "Max": 1,
+          "Step": 1,
+          "Default": 0,
+          "Options": null
+        }
+      ]
+    },
+    {
+      "ID": 1,
+      "Url": "/video1",
+      "DeviceName": "W1: W1",
+      "Config": {
+        "Path": "/dev/video2",
+        "Driver": "uvcvideo",
+        "Codec": "MJPG",
+        "Width": 1920,
+        "Height": 1080,
+        "FPS": 30
+      },
+      "Configs": [
+        {
+          "Format": 1196444237,
+          "Width": 1920,
+          "Height": 1080,
+          "FPS": { "N": 30, "D": 1 }
+        },
+        {
+          "Format": 1196444237,
+          "Width": 1280,
+          "Height": 960,
+          "FPS": { "N": 30, "D": 1 }
+        },
+        {
+          "Format": 1196444237,
+          "Width": 1280,
+          "Height": 720,
+          "FPS": { "N": 30, "D": 1 }
+        },
+        {
+          "Format": 1196444237,
+          "Width": 800,
+          "Height": 600,
+          "FPS": { "N": 30, "D": 1 }
+        },
+        {
+          "Format": 1196444237,
+          "Width": 640,
+          "Height": 480,
+          "FPS": { "N": 30, "D": 1 }
+        },
+        {
+          "Format": 1196444237,
+          "Width": 640,
+          "Height": 360,
+          "FPS": { "N": 30, "D": 1 }
+        },
+        {
+          "Format": 1196444237,
+          "Width": 1280,
+          "Height": 1024,
+          "FPS": { "N": 30, "D": 1 }
+        },
+        {
+          "Format": 1196444237,
+          "Width": 1024,
+          "Height": 768,
+          "FPS": { "N": 30, "D": 1 }
+        },
+        {
+          "Format": 1196444237,
+          "Width": 960,
+          "Height": 720,
+          "FPS": { "N": 30, "D": 1 }
+        },
+        {
+          "Format": 1196444237,
+          "Width": 320,
+          "Height": 240,
+          "FPS": { "N": 30, "D": 1 }
+        },
+        {
+          "Format": 1448695129,
+          "Width": 1920,
+          "Height": 1080,
+          "FPS": { "N": 5, "D": 1 }
+        },
+        {
+          "Format": 1448695129,
+          "Width": 1280,
+          "Height": 720,
+          "FPS": { "N": 10, "D": 1 }
+        },
+        {
+          "Format": 1448695129,
+          "Width": 800,
+          "Height": 600,
+          "FPS": { "N": 15, "D": 1 }
+        },
+        {
+          "Format": 1448695129,
+          "Width": 640,
+          "Height": 480,
+          "FPS": { "N": 30, "D": 1 }
+        }
+      ],
+      "Controls": [
+        {
+          "CID": 9963776,
+          "Name": "Brightness",
+          "Type": "int",
+          "Min": -128,
+          "Max": 127,
+          "Step": 1,
+          "Default": -4,
+          "Options": null
+        },
+        {
+          "CID": 9963777,
+          "Name": "Contrast",
+          "Type": "int",
+          "Min": 0,
+          "Max": 63,
+          "Step": 1,
+          "Default": 32,
+          "Options": null
+        },
+        {
+          "CID": 9963778,
+          "Name": "Saturation",
+          "Type": "int",
+          "Min": 0,
+          "Max": 128,
+          "Step": 1,
+          "Default": 61,
+          "Options": null
+        },
+        {
+          "CID": 9963779,
+          "Name": "Hue",
+          "Type": "int",
+          "Min": -180,
+          "Max": 180,
+          "Step": 1,
+          "Default": 0,
+          "Options": null
+        },
+        {
+          "CID": 9963788,
+          "Name": "White Balance, Automatic",
+          "Type": "bool",
+          "Min": 0,
+          "Max": 1,
+          "Step": 1,
+          "Default": 1,
+          "Options": null
+        },
+        {
+          "CID": 9963792,
+          "Name": "Gamma",
+          "Type": "int",
+          "Min": 1,
+          "Max": 500,
+          "Step": 1,
+          "Default": 105,
+          "Options": null
+        },
+        {
+          "CID": 9963795,
+          "Name": "Gain",
+          "Type": "int",
+          "Min": 0,
+          "Max": 63,
+          "Step": 1,
+          "Default": 32,
+          "Options": null
+        },
+        {
+          "CID": 9963800,
+          "Name": "Power Line Frequency",
+          "Type": "enum",
+          "Min": 0,
+          "Max": 2,
+          "Step": 1,
+          "Default": 1,
+          "Options": [
+            { "Value": 0, "Name": "Disabled", "Int64": 0 },
+            { "Value": 1, "Name": "50 Hz", "Int64": 0 },
+            { "Value": 2, "Name": "60 Hz", "Int64": 0 }
+          ]
+        },
+        {
+          "CID": 9963802,
+          "Name": "White Balance Temperature",
+          "Type": "int",
+          "Min": 2800,
+          "Max": 6500,
+          "Step": 1,
+          "Default": 4000,
+          "Options": null
+        },
+        {
+          "CID": 9963803,
+          "Name": "Sharpness",
+          "Type": "int",
+          "Min": 0,
+          "Max": 31,
+          "Step": 1,
+          "Default": 12,
+          "Options": null
+        },
+        {
+          "CID": 9963804,
+          "Name": "Backlight Compensation",
+          "Type": "int",
+          "Min": 0,
+          "Max": 1,
+          "Step": 1,
+          "Default": 0,
+          "Options": null
+        },
+        {
+          "CID": 10094849,
+          "Name": "Auto Exposure",
+          "Type": "enum",
+          "Min": 0,
+          "Max": 3,
+          "Step": 1,
+          "Default": 3,
+          "Options": [
+            { "Value": 1, "Name": "Manual Mode", "Int64": 0 },
+            { "Value": 3, "Name": "Aperture Priority Mode", "Int64": 0 }
+          ]
+        },
+        {
+          "CID": 10094850,
+          "Name": "Exposure Time, Absolute",
+          "Type": "int",
+          "Min": 1,
+          "Max": 5000,
+          "Step": 1,
+          "Default": 313,
+          "Options": null
+        }
+      ]
+    }
+  ],
+  "RemoteAccess": 0,
+  "Remotes": [],
+  "Recorders": 1000
+}

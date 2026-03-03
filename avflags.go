@@ -75,14 +75,14 @@ func (avFlags *AvFlags) Print() {
 }
 
 func (avFlags *AvFlags) Parse() {
-	flag.StringVar(&avFlags.HostAddr, "address", avDefaultFlags.HostAddr, hostAddrUsage)
-	flag.StringVar(&avFlags.HostAddr, "a", avDefaultFlags.HostAddr, hostAddrUsage)
-	flag.StringVar(&avFlags.Connect, "connect", avDefaultFlags.Connect, connectUsage)
-	flag.StringVar(&avFlags.Connect, "c", avDefaultFlags.Connect, connectUsage)
-	flag.StringVar(&avFlags.OutputBase, "output", avDefaultFlags.OutputBase, outputBaseUsage)
-	flag.StringVar(&avFlags.OutputBase, "o", avDefaultFlags.OutputBase, outputBaseUsage)
-	flag.BoolVar(&avFlags.Update, "update", avDefaultFlags.Update, updateUsage)
-	flag.BoolVar(&avFlags.Update, "u", avDefaultFlags.Update, updateUsage)
+	flag.StringVar(&avFlags.HostAddr, "address", avFlags.HostAddr, hostAddrUsage)
+	flag.StringVar(&avFlags.HostAddr, "a", avFlags.HostAddr, hostAddrUsage)
+	flag.StringVar(&avFlags.Connect, "connect", avFlags.Connect, connectUsage)
+	flag.StringVar(&avFlags.Connect, "c", avFlags.Connect, connectUsage)
+	flag.StringVar(&avFlags.OutputBase, "output", avFlags.OutputBase, outputBaseUsage)
+	flag.StringVar(&avFlags.OutputBase, "o", avFlags.OutputBase, outputBaseUsage)
+	flag.BoolVar(&avFlags.Update, "update", avFlags.Update, updateUsage)
+	flag.BoolVar(&avFlags.Update, "u", avFlags.Update, updateUsage)
 
 	flag.Var((*stringArray)(&avFlags.Remotes), "remote", remoteAddrUsage)
 	flag.Var((*stringArray)(&avFlags.Remotes), "r", remoteAddrUsage)
