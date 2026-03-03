@@ -331,10 +331,13 @@ func (host *AvHost) ScanRemote(addr string) {
 			return
 		}
 		if avStream == nil {
-			host.addStream(remotecam, &stream.Config, nil, host.streamListener)
+			avStream = host.addStream(remotecam, &stream.Config, nil, host.streamListener)
 		} else {
 			host.updateStream(avStream, remotecam, &stream.Config)
 		}
+		avStream.DeviceName = stream.DeviceName
+		avStream.Configs = stream.Configs
+		avStream.Controls = stream.Controls
 	}
 
 }
