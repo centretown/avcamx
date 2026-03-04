@@ -225,9 +225,11 @@ func (host *AvHost) findStream(url string) *AvStream {
 }
 
 func (host *AvHost) copyStreams() (streams []*AvStream) {
-	streams = make([]*AvStream, len(host.Streamers))
-	for i, s := range host.Streamers {
-		streams[i] = s.copyStream()
+	streams = make([]*AvStream, 0)
+	for _, s := range host.Streamers {
+		if s.IsOpened() {
+			streams = append(streams, s.copyStream())
+		}
 	}
 	return
 }
