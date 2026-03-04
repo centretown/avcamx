@@ -395,7 +395,7 @@ func (host *AvHost) createAvStreamHandlers(id int, driver string) {
 					err := localcam.Reset()
 					if err != nil {
 						log.Println("AvStream Reset Handler: ", err, r.URL.Path)
-						host.tmpl.Execute(w, err.Error())
+						host.tmpl.Execute(w, "?")
 					}
 					return
 				}
@@ -403,6 +403,7 @@ func (host *AvHost) createAvStreamHandlers(id int, driver string) {
 				ctrl, ok := AvUrlToName[url]
 				if !ok {
 					log.Println("Unsupported AvStream Request: ", r.URL.Path)
+					host.tmpl.Execute(w, "?")
 					return
 				}
 
@@ -410,13 +411,14 @@ func (host *AvHost) createAvStreamHandlers(id int, driver string) {
 				if !ok {
 					log.Printf("Unsupported AvStream Control: %s '%s'",
 						r.URL.Path, ctrl.Name)
+					host.tmpl.Execute(w, "?")
 					return
 				}
 
 				value, err := localcam.device.GetControl(info.CID)
 				if err != nil {
 					log.Println("Unsupported AvStream Control Value: ", r.URL.Path, err)
-					host.tmpl.Execute(w, err.Error())
+					host.tmpl.Execute(w, "?")
 					return
 				}
 
@@ -428,7 +430,7 @@ func (host *AvHost) createAvStreamHandlers(id int, driver string) {
 					if err != nil {
 						log.Println("Set Control AvStream: ", r.URL.Path, err)
 						// w.Write(([]byte)(err.Error()))
-						host.tmpl.Execute(w, err.Error())
+						host.tmpl.Execute(w, "?")
 						return
 					}
 				}
@@ -438,18 +440,21 @@ func (host *AvHost) createAvStreamHandlers(id int, driver string) {
 				resp, err := http.Get(avStream.Source.Path() + url)
 				if err != nil {
 					log.Println("Set Control AvStream: ", r.URL.Path, err)
+					host.tmpl.Execute(w, "?")
 					return
 				}
 				defer resp.Body.Close()
 				buf, err := io.ReadAll(resp.Body)
 				if err != nil {
 					log.Print(err)
+					host.tmpl.Execute(w, "?")
 					return
 				}
 				w.Write(buf)
 
 			default:
 				log.Println("Unsupported AvStream Requested: ", r.URL.Path)
+				host.tmpl.Execute(w, "?")
 				return
 			}
 		})
