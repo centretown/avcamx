@@ -26,3 +26,7 @@ func TestUdp(t *testing.T) {
 	time.Sleep(time.Second)
 
 }
+
+func TestUDPAddr(t *testing.T) {
+	t.Log(UDPAddress())
+}

@@ -3,13 +3,15 @@ package avcamx
 import (
 	"log"
 	"net"
+	"strings"
 )
 
 const UDPPort = ":9010"
 
 func UDPAddress() string {
 	local := GetOutboundIP()
-	return local[:len(local)-4] + ".255" + UDPPort
+	pos := strings.LastIndex(local, ".")
+	return local[:pos] + ".255" + UDPPort
 }
 
 // thanks to Mr. Wong
