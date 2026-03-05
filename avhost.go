@@ -24,6 +24,7 @@ const (
 const (
 	AV_QUIT int = iota + 1
 	AV_STREAMS
+	AV_LOCAL_STREAMS
 	AV_URL
 )
 
@@ -95,7 +96,7 @@ func (host *AvHost) Run() (err error) {
 	host.mux.HandleFunc("/host", func(w http.ResponseWriter, r *http.Request) {
 		copy := &AvHost{
 			Url:          host.Url,
-			Streamers:    host.Streams(),
+			Streamers:    host.LocalStreams(),
 			Remotes:      host.Remotes,
 			RemoteAccess: host.RemoteAccess,
 			Recorders:    host.Recorders,
@@ -131,6 +132,12 @@ func (host *AvHost) Stream(url string) (stream *AvStream) {
 
 func (host *AvHost) Streams() (streams []*AvStream) {
 	host.cmdChan <- AV_STREAMS
+	streams = <-host.streamsChan
+	return
+}
+
+func (host *AvHost) LocalStreams() (streams []*AvStream) {
+	host.cmdChan <- AV_LOCAL_STREAMS
 	streams = <-host.streamsChan
 	return
 }
@@ -190,6 +197,8 @@ func (host *AvHost) Monitor() {
 					return
 				case AV_STREAMS:
 					host.streamsChan <- host.copyStreams()
+				case AV_LOCAL_STREAMS:
+					host.streamsChan <- host.copyLocalStreams()
 				}
 			case url := <-host.urlChan:
 				host.streamChan <- host.findStream(url)
@@ -205,6 +214,8 @@ func (host *AvHost) Monitor() {
 					return
 				case AV_STREAMS:
 					host.streamsChan <- host.copyStreams()
+				case AV_LOCAL_STREAMS:
+					host.streamsChan <- host.copyLocalStreams()
 				}
 			case url := <-host.urlChan:
 				host.streamChan <- host.findStream(url)
@@ -225,6 +236,16 @@ func (host *AvHost) findStream(url string) *AvStream {
 }
 
 func (host *AvHost) copyStreams() (streams []*AvStream) {
+	streams = make([]*AvStream, 0)
+	for _, s := range host.Streamers {
+		if s.IsOpened() {
+			streams = append(streams, s.copyStream())
+		}
+	}
+	return
+}
+
+func (host *AvHost) copyLocalStreams() (streams []*AvStream) {
 	streams = make([]*AvStream, 0)
 	for _, s := range host.Streamers {
 		_, ok := s.Source.(*LocalCam)
