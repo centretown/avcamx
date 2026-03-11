@@ -509,7 +509,7 @@ func (host *AvHost) fetchRemote(remoteAddr string) (remote *AvHost, err error) {
 		log.Print("FetchRemote Get", err)
 		return
 	}
-
+	defer resp.Body.Close()
 	remote, err = ReadRemote(resp.Body)
 	if err != nil {
 		log.Print("FetchRemote ReadRemote", err)
