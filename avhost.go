@@ -294,8 +294,8 @@ func (host *AvHost) ScanLocal() (update_count int) {
 		localcam := NewLocalCam(&info)
 		config := &VideoConfig{
 			Codec:  "MJPG",
-			Width:  1920,
-			Height: 1080,
+			Width:  3840,
+			Height: 2160,
 			FPS:    30,
 		}
 		err := localcam.Open(config)
@@ -501,20 +501,32 @@ func (host *AvHost) findAvStreamClosed() (avStream *AvStream) {
 
 func (host *AvHost) fetchRemote(remoteAddr string) (remote *AvHost, err error) {
 	var (
-		resp *http.Response
+		response *http.Response
 	)
 
-	resp, err = http.Get(remoteAddr + "/host")
+	response, err = http.Get(remoteAddr + "/host")
 	if err != nil {
 		log.Print("FetchRemote Get", err)
 		return
 	}
-	defer resp.Body.Close()
-	remote, err = ReadRemote(resp.Body)
+	remote, err = readRemote(response)
 	if err != nil {
 		log.Print("FetchRemote ReadRemote", err)
 		return
 	}
+	return
+}
+
+func readRemote(response *http.Response) (host *AvHost, err error) {
+	host = &AvHost{}
+	var buf []byte
+	defer response.Body.Close()
+	buf, err = io.ReadAll(response.Body)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+	err = json.Unmarshal(buf, host)
 	return
 }
 
