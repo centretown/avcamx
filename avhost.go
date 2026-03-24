@@ -147,16 +147,7 @@ func (host *AvHost) Monitor() {
 		localPeriod = time.Second * 5
 		localScan   = time.Now()
 		now         time.Time
-		err         error
-		conn        net.Conn
 	)
-
-	conn, err = net.Dial("udp4", UDPAddress())
-	if err != nil {
-		log.Printf("DialUDP %v", err)
-		return
-	}
-	defer conn.Close()
 
 	var (
 		UDPDone   chan int
@@ -177,11 +168,18 @@ func (host *AvHost) Monitor() {
 			localScan = now.Add(localPeriod)
 			update_count := host.ScanLocal()
 			if update_count > 0 {
+				conn, err := net.Dial("udp4", UDPAddress())
+				if err != nil {
+					log.Printf("DialUDP %v", err)
+					return
+				}
+
 				_, err = conn.Write([]byte("update"))
 				if err != nil {
 					log.Printf("Monitor:DialUDP: %v", err)
-					continue
 				}
+				conn.Close()
+				continue
 			}
 		}
 
