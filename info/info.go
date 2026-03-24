@@ -10,14 +10,16 @@ import (
 func main() {
 	devices := v4l.FindDevices()
 	for _, info := range devices {
+		fmt.Print(info.Path, "...")
 		if !info.Camera {
 			fmt.Printf("Not a camera %s\n", info.Path)
 			continue
 		}
+		fmt.Printf("Uses '%s' driver camera %s\n",
+			info.DriverName,
+			info.Path)
+
 		if info.DriverName != avcamx.UVCVideoDriver {
-			fmt.Printf("Uses '%s' driver camera %s\n",
-				info.DriverName,
-				info.Path)
 			continue
 		}
 		device, err := v4l.Open(info.Path)
@@ -28,7 +30,6 @@ func main() {
 
 		controls, err := device.ListControls()
 		if err != nil {
-
 			fmt.Printf("Error listing controls %s@%s: %v\n", info.DeviceName, info.Path, err)
 			continue
 		}
