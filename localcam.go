@@ -144,9 +144,14 @@ func (cam *LocalCam) mapControls() (err error) {
 	controls, err = cam.device.ListControls()
 	if err != nil {
 		log.Println("ListControls", cam.Info.Path, err)
+	}
+
+	if controls == nil {
+		fmt.Printf("Control list invalid %s@%s: %v\n", cam.Info.DeviceName, cam.Info.Path, err)
 		return
 	}
 
+	err = nil
 	for _, control := range controls {
 		cam.Controls[control.Name] = control
 	}

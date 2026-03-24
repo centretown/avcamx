@@ -31,6 +31,10 @@ func main() {
 		controls, err := device.ListControls()
 		if err != nil {
 			fmt.Printf("Error listing controls %s@%s: %v\n", info.DeviceName, info.Path, err)
+		}
+
+		if controls == nil {
+			fmt.Printf("Controls list invalid %s@%s: %v\n", info.DeviceName, info.Path, err)
 			continue
 		}
 
