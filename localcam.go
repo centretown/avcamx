@@ -106,6 +106,13 @@ func (cam *LocalCam) Open(videoConfig *VideoConfig) (err error) {
 		FPS: v4l.Frac{N: videoConfig.FPS, D: 1},
 	}
 
+	log.Printf("Preferred Configuration: Path=%v Codec=%v Width=%v Height=%v FPS=%v",
+		cam.Info.Path,
+		videoConfig.Codec,
+		preferred.Width,
+		preferred.Height,
+		videoConfig.FPS)
+
 	found := cam.findConfig(preferred)
 	cam.videoConfig.Path = cam.Info.Path
 	cam.videoConfig.Driver = deviceInfo.DriverName
@@ -120,6 +127,14 @@ func (cam *LocalCam) Open(videoConfig *VideoConfig) (err error) {
 		log.Println("readonly: ", err)
 		return
 	}
+
+	log.Printf("Configuration: Path=%v Driver=%v Codec=%v Width=%v Height=%v FPS=%v",
+		cam.videoConfig.Path,
+		cam.videoConfig.Driver,
+		cam.videoConfig.Codec,
+		cam.videoConfig.Width,
+		cam.videoConfig.Height,
+		cam.videoConfig.FPS)
 
 	var bufferInfo v4l.BufferInfo
 	if bufferInfo, err = cam.device.BufferInfo(); err != nil {

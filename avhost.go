@@ -292,8 +292,8 @@ func (host *AvHost) ScanLocal() (update_count int) {
 		localcam := NewLocalCam(&info)
 		config := &VideoConfig{
 			Codec:  "MJPG",
-			Width:  3840,
-			Height: 2160,
+			Width:  1920,
+			Height: 1080,
 			FPS:    30,
 		}
 		err := localcam.Open(config)
@@ -543,6 +543,7 @@ func (host *AvHost) PollUDP(done chan int, updateAddr chan string) error {
 		log.Println("ListenUDP: ", err)
 		return err
 	}
+	defer conn.Close()
 
 	var (
 		buf  [1024]byte
