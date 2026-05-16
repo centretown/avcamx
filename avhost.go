@@ -2,6 +2,7 @@ package avcamx
 
 import (
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"io"
 	"log"
@@ -290,12 +291,23 @@ func (host *AvHost) ScanLocal() (update_count int) {
 		}
 
 		localcam := NewLocalCam(&info)
-		config := &VideoConfig{
-			Codec:  "MJPG",
-			Width:  1920,
-			Height: 1080,
-			FPS:    30,
+		var config *VideoConfig
+		if strings.Contains(info.DeviceName, "webcam AC310") {
+			config = &VideoConfig{
+				Codec:  "MJPG",
+				Width:  2560,
+				Height: 1440,
+				FPS:    30,
+			}
+		} else {
+			config = &VideoConfig{
+				Codec:  "MJPG",
+				Width:  1920,
+				Height: 1080,
+				FPS:    30,
+			}
 		}
+		fmt.Println(*config, " ", info.DeviceName)
 		err := localcam.Open(config)
 		if err != nil {
 			log.Print("ScanLocal ", err)
